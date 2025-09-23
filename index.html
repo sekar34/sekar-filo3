@@ -60,15 +60,15 @@
   <div id="onay" class="page">
     <h2>ONAY NO</h2>
     <form id="onayForm">
-      Tarih: <input type="date" name="tarih" required>
-      Plaka: <input type="text" name="plaka" required>
-      Firma: <input type="text" name="firma" required>
-      Km: <input type="number" name="km" required>
-      Servis: <input type="text" name="servis" required>
-      Durum: <input type="text" name="durum" required>
-      Açıklama: <input type="text" name="aciklama">
-      Tutar: <input type="number" name="tutar" required>
-      <button type="submit">Kaydet</button>
+      Tarih: <input type="date" id="onayTarih" required>
+      Plaka: <input type="text" id="onayPlaka" required>
+      Firma: <input type="text" id="onayFirma" required>
+      Km: <input type="number" id="onayKm" required>
+      Servis: <input type="text" id="onayServis" required>
+      Durum: <input type="text" id="onayDurum" required>
+      Açıklama: <input type="text" id="onayAciklama">
+      Tutar: <input type="number" id="onayTutar" required>
+      <button type="button" onclick="submitOnay()">Kaydet</button>
     </form>
     <table id="onayTable"><tbody></tbody></table>
   </div>
@@ -77,12 +77,12 @@
   <div id="ikame" class="page">
     <h2>İKAME ARAÇ</h2>
     <form id="ikameForm">
-      Müşteri Plakası: <input type="text" name="musteriPlaka" required>
-      Firma: <input type="text" name="firma" required>
-      İkame Araç Plakası: <input type="text" name="ikamePlaka" required>
-      Km: <input type="number" name="km" required>
-      Teslim Tarihi: <input type="date" name="teslimTarih" required>
-      <button type="submit">Kaydet</button>
+      Müşteri Plakası: <input type="text" id="ikameMusteri" required>
+      Firma: <input type="text" id="ikameFirma" required>
+      İkame Araç Plakası: <input type="text" id="ikamePlaka" required>
+      Km: <input type="number" id="ikameKm" required>
+      Teslim Tarihi: <input type="date" id="ikameTeslim" required>
+      <button type="button" onclick="submitIkame()">Kaydet</button>
     </form>
     <table id="ikameTable"><tbody></tbody></table>
   </div>
@@ -91,13 +91,13 @@
   <div id="teslim" class="page">
     <h2>ARAÇ TESLİM</h2>
     <form id="teslimForm">
-      Teslim Tarihi: <input type="date" name="teslimTarih" required>
-      Plaka: <input type="text" name="plaka" required>
-      Model: <input type="text" name="model" required>
-      Firma: <input type="text" name="firma" required>
-      Teslim Alan Kişi: <input type="text" name="kisi" required>
-      İrtibat No: <input type="text" name="irtibat" required>
-      <button type="submit">Kaydet</button>
+      Teslim Tarihi: <input type="date" id="teslimTarih" required>
+      Plaka: <input type="text" id="teslimPlaka" required>
+      Model: <input type="text" id="teslimModel" required>
+      Firma: <input type="text" id="teslimFirma" required>
+      Teslim Alan Kişi: <input type="text" id="teslimKisi" required>
+      İrtibat No: <input type="text" id="teslimIrtibat" required>
+      <button type="button" onclick="submitTeslim()">Kaydet</button>
     </form>
     <table id="teslimTable"><tbody></tbody></table>
   </div>
@@ -106,11 +106,11 @@
   <div id="bilgi" class="page">
     <h2>ARAÇ/FİRMA BİLGİLERİ</h2>
     <form id="bilgiForm">
-      Plaka: <input type="text" name="plaka" required>
-      Firma: <input type="text" name="firma" required>
-      Model: <input type="text" name="model">
-      Not: <input type="text" name="not">
-      <button type="submit">Kaydet</button>
+      Plaka: <input type="text" id="bilgiPlaka" required>
+      Firma: <input type="text" id="bilgiFirma" required>
+      Model: <input type="text" id="bilgiModel">
+      Not: <input type="text" id="bilgiNot">
+      <button type="button" onclick="submitBilgi()">Kaydet</button>
     </form>
     <table id="bilgiTable"><tbody></tbody></table>
   </div>
@@ -215,13 +215,20 @@ function updateRole(uid,role){
 }
 
 // === ONAY ===
-document.getElementById("onayForm").onsubmit=e=>{
-  e.preventDefault();
-  let f=new FormData(e.target);
-  let rec={tarih:f.get("tarih"),plaka:f.get("plaka"),firma:f.get("firma"),km:f.get("km"),servis:f.get("servis"),durum:f.get("durum"),aciklama:f.get("aciklama"),tutar:f.get("tutar")};
-  db.ref("onayRecords").push(rec);
-  e.target.reset();
-};
+function submitOnay(){
+  let rec={
+    tarih: document.getElementById("onayTarih").value,
+    plaka: document.getElementById("onayPlaka").value,
+    firma: document.getElementById("onayFirma").value,
+    km: document.getElementById("onayKm").value,
+    servis: document.getElementById("onayServis").value,
+    durum: document.getElementById("onayDurum").value,
+    aciklama: document.getElementById("onayAciklama").value,
+    tutar: document.getElementById("onayTutar").value
+  };
+  db.ref("onayRecords").push(rec).then(()=>loadOnay());
+  document.getElementById("onayForm").reset();
+}
 function loadOnay(){
   db.ref("onayRecords").on("value",snap=>{
     let tb=document.querySelector("#onayTable tbody");tb.innerHTML="";
@@ -235,13 +242,17 @@ function loadOnay(){
 }
 
 // === İKAME ===
-document.getElementById("ikameForm").onsubmit=e=>{
-  e.preventDefault();
-  let f=new FormData(e.target);
-  let rec={musteriPlaka:f.get("musteriPlaka"),firma:f.get("firma"),ikamePlaka:f.get("ikamePlaka"),km:f.get("km"),teslim:f.get("teslimTarih")};
-  db.ref("ikameRecords").push(rec);
-  e.target.reset();
-};
+function submitIkame(){
+  let rec={
+    musteriPlaka: document.getElementById("ikameMusteri").value,
+    firma: document.getElementById("ikameFirma").value,
+    ikamePlaka: document.getElementById("ikamePlaka").value,
+    km: document.getElementById("ikameKm").value,
+    teslim: document.getElementById("ikameTeslim").value
+  };
+  db.ref("ikameRecords").push(rec).then(()=>loadIkame());
+  document.getElementById("ikameForm").reset();
+}
 function loadIkame(){
   db.ref("ikameRecords").on("value",snap=>{
     let tb=document.querySelector("#ikameTable tbody");tb.innerHTML="";
@@ -255,13 +266,18 @@ function loadIkame(){
 }
 
 // === TESLİM ===
-document.getElementById("teslimForm").onsubmit=e=>{
-  e.preventDefault();
-  let f=new FormData(e.target);
-  let rec={tarih:f.get("teslimTarih"),plaka:f.get("plaka"),model:f.get("model"),firma:f.get("firma"),kisi:f.get("kisi"),irtibat:f.get("irtibat")};
-  db.ref("teslimRecords").push(rec);
-  e.target.reset();
-};
+function submitTeslim(){
+  let rec={
+    tarih: document.getElementById("teslimTarih").value,
+    plaka: document.getElementById("teslimPlaka").value,
+    model: document.getElementById("teslimModel").value,
+    firma: document.getElementById("teslimFirma").value,
+    kisi: document.getElementById("teslimKisi").value,
+    irtibat: document.getElementById("teslimIrtibat").value
+  };
+  db.ref("teslimRecords").push(rec).then(()=>loadTeslim());
+  document.getElementById("teslimForm").reset();
+}
 function loadTeslim(){
   db.ref("teslimRecords").on("value",snap=>{
     let tb=document.querySelector("#teslimTable tbody");tb.innerHTML="";
@@ -275,13 +291,16 @@ function loadTeslim(){
 }
 
 // === BİLGİ ===
-document.getElementById("bilgiForm").onsubmit=e=>{
-  e.preventDefault();
-  let f=new FormData(e.target);
-  let rec={plaka:f.get("plaka"),firma:f.get("firma"),model:f.get("model"),not:f.get("not")};
-  db.ref("bilgiRecords").push(rec);
-  e.target.reset();
-};
+function submitBilgi(){
+  let rec={
+    plaka: document.getElementById("bilgiPlaka").value,
+    firma: document.getElementById("bilgiFirma").value,
+    model: document.getElementById("bilgiModel").value,
+    not: document.getElementById("bilgiNot").value
+  };
+  db.ref("bilgiRecords").push(rec).then(()=>loadBilgi());
+  document.getElementById("bilgiForm").reset();
+}
 function loadBilgi(){
   db.ref("bilgiRecords").on("value",snap=>{
     let tb=document.querySelector("#bilgiTable tbody");tb.innerHTML="";

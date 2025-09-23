@@ -6,23 +6,49 @@
   <style>
     body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f5; color: #333; }
     header { display: flex; align-items: center; background: #006f3c; padding: 15px; justify-content: center; position:relative; }
-    header h1 { color: white; margin: 0; font-size: 22px; }
+    header h1 { color: white; margin: 0; font-size: 24px; }
     #currentUser { position:absolute; left:20px; top:20px; color:#fff; font-weight:bold; }
     .menu { text-align: center; margin: 20px; }
-    .menu button { margin: 8px; padding: 10px 20px; background: #009e52; border: none; color: white; cursor: pointer; border-radius: 5px; font-size: 14px; }
+    .menu button { margin: 10px; padding: 12px 25px; background: #009e52; border: none; color: white; cursor: pointer; border-radius: 5px; font-size: 16px; }
     .menu button:hover { background: #007a3c; }
     .page { display: none; margin: 20px; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 0 8px rgba(0,0,0,0.1); }
     .login-page { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-    .login-box { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 0 8px rgba(0,0,0,0.2); width: 280px; }
-    .login-box input { width: 100%; padding: 8px; margin: 6px 0; border: 1px solid #ccc; border-radius: 5px; }
+    .login-box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 8px rgba(0,0,0,0.2); width: 300px; }
+    .login-box h2 { margin-top: 0; text-align: center; }
+    .login-box input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px; }
     .login-box button { width: 100%; padding: 10px; background: #006f3c; color: white; border: none; border-radius: 5px; cursor: pointer; }
     .login-box button:hover { background: #004f2a; }
-    .logout-btn { position: absolute; top: 20px; right: 20px; padding: 6px 12px; background: #900; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    .logout-btn { position: absolute; top: 20px; right: 20px; padding: 8px 16px; background: #900; color: white; border: none; border-radius: 5px; cursor: pointer; }
     .logout-btn:hover { background: #600; }
-    table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
-    th,td{ border:1px solid #ccc; padding:5px; text-align:center; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+    th,td{ border:1px solid #ccc; padding:6px; text-align:center; }
     th{ background:#006f3c; color:white; }
+    .edit-btn { background: orange; color: white; padding: 4px 8px; border: none; border-radius: 3px; cursor: pointer; margin:2px; }
+    .delete-btn { background: red; color: white; padding: 4px 8px; border: none; border-radius: 3px; cursor: pointer; margin:2px; }
+    .export-btn { margin-top: 10px; padding: 8px 16px; background: #006f3c; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    .export-btn:hover { background: #004f2a; }
+    .filter-row input { width: 95%; padding: 4px; font-size: 12px; }
+    .red-cell { background: #ffcccc; color: #900; font-weight: bold; }
+    .green-cell { background: #ccffcc; color: #060; font-weight: bold; }
+    img.preview { max-width:100px; max-height:100px; }
   </style>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script>
+  const firebaseConfig = {
+    apiKey: "SENIN_API_KEY",
+    authDomain: "SENIN.firebaseapp.com",
+    databaseURL: "https://SENIN.firebaseio.com",
+    projectId: "SENIN",
+    storageBucket: "SENIN.appspot.com",
+    messagingSenderId: "XXXX",
+    appId: "1:XXXX:web:XXXX"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  </script>
 </head>
 <body>
 
@@ -30,10 +56,9 @@
 <div id="loginPage" class="login-page">
   <div class="login-box">
     <h2>SEKAR FİLO GİRİŞ</h2>
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Şifre">
+    <input type="text" id="username" placeholder="Kullanıcı Adı" required>
+    <input type="password" id="password" placeholder="Şifre" required>
     <button onclick="login()">Giriş Yap</button>
-    <button onclick="register()">Kayıt Ol</button>
     <p id="loginError" style="color:red; display:none;">Hatalı giriş!</p>
   </div>
 </div>
@@ -47,449 +72,131 @@
   </header>
 
   <div class="menu">
-    <button onclick="showPage('onay')">ONAY NO</button>
-    <button onclick="showPage('ikame')">İKAME ARAÇ</button>
-    <button onclick="showPage('teslim')">ARAÇ TESLİM</button>
-    <button onclick="showPage('bilgi')">ARAÇ/FİRMA BİLGİLERİ</button>
-    <button id="adminBtn" style="display:none;" onclick="showPage('admin')">👑 ADMIN PANELİ</button>
+    <button data-page="onay" onclick="showPage('onay')">ONAY NO</button>
   </div>
 
-<!-- ONAY NO -->
-<div id="onay" class="page">
-  <h2>ONAY NO</h2>
-  <form id="onayForm">
-    Tarih: <input type="date" name="tarih" required>
-    Plaka: <input list="plakaList" name="plaka" onchange="autoFillFirmaOnay(this.value)" required>
-    Firma: <input type="text" name="firma" readonly>
-    Km: <input type="number" name="km" required>
-    Servis: <input type="text" name="servis" required>
-    Durum:
-    <select name="durum" required>
-      <option value="">Seçiniz</option>
-      <option value="BAKIM">BAKIM</option>
-      <option value="HASAR">HASAR</option>
-      <option value="MEKANİK">MEKANİK</option>
-      <option value="LASTİK">LASTİK</option>
-      <option value="DİĞER">DİĞER</option>
-    </select>
-    Açıklama: <input type="text" name="aciklama" placeholder="Durum açıklaması">
-    Tutar: <input type="number" name="tutar" required>
-    Yansıtma: <input type="text" name="yansitma">
-    <button type="submit">Kaydet</button>
-  </form>
+  <!-- ONAY NO -->
+  <div id="onay" class="page">
+    <h2>ONAY NO</h2>
+    <form id="onayForm">
+      Tarih: <input type="date" name="tarih" required>
+      Plaka: <input name="plaka" required>
+      Firma: <input type="text" name="firma">
+      Km: <input type="number" name="km" required>
+      Servis: <input type="text" name="servis" required>
+      Durum: <select name="durum" required>
+        <option value="">Seçiniz</option>
+        <option>BAKIM</option><option>HASAR</option>
+        <option>MEKANİK</option><option>LASTİK</option><option>DİĞER</option>
+      </select>
+      Açıklama: <input type="text" name="aciklama">
+      Tutar: <input type="number" name="tutar" required>
+      Yansıtma: <input type="text" name="yansitma">
+      <button type="submit">Kaydet</button>
+    </form>
 
-  <table id="onayTable">
-    <thead>
-      <tr>
-        <th>Onay No</th><th>Tarih</th><th>Plaka</th><th>Firma</th><th>Km</th><th>Servis</th>
-        <th>Durum</th><th>Açıklama</th><th>Tutar</th><th>Fatura No</th>
-        <th>Fatura Tutarı</th><th>Fark</th><th>Yansıtma</th><th>Fatura Görseli</th><th>İşlemler</th>
-      </tr>
-      <tr id="onayFilter" class="filter-row"></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-  <div id="onayPagination"></div>
-  <button class="export-btn" onclick="exportTable('onayTable','OnayNo')">Excel'e Aktar</button>
+    <table id="onayTable">
+      <thead>
+        <tr>
+          <th>Onay No</th><th>Tarih</th><th>Plaka</th><th>Firma</th><th>Km</th>
+          <th>Servis</th><th>Durum</th><th>Açıklama</th><th>Tutar</th><th>Fatura No</th>
+          <th>Fatura Tutarı</th><th>Fark</th><th>Yansıtma</th><th>Fatura Görseli</th><th>İşlemler</th>
+        </tr>
+        <tr id="onayFilter" class="filter-row"></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button class="export-btn" onclick="exportTable('onayTable','OnayNo')">Excel'e Aktar</button>
+  </div>
 </div>
 
 <script>
-/* === Yardımcı === */
-const fmtTL = v => v ? new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY'}).format(v) : "";
-function exportTable(tid,fname){
-  let rows=Array.from(document.querySelectorAll(`#${tid} tr`)).map(r=>Array.from(r.cells).map(c=>c.innerText));
-  let csv=rows.map(r=>r.join(";")).join("\n");
-  let blob=new Blob([csv],{type:'text/csv'});
-  let link=document.createElement("a");
-  link.href=URL.createObjectURL(blob);
-  link.download=fname+".csv";
-  link.click();
-}
+/* === Firebase Save/Load === */
+const save = (k,d) => db.ref(k).set(d);
+const load = async k => { let snap=await db.ref(k).once("value"); return snap.val()||[]; };
+const fmtTL = v=>v?new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY'}).format(v):"";
 
-/* === ONAY Firebase === */
-let onayCounter = Date.now(); // unique onayNo
-let onayPage = 1, onayPerPage = 25;
+let onayRecords=[], onayCounter=20250000;
 
-document.getElementById("onayForm").onsubmit = e=>{
+/* === Form Kaydet === */
+document.getElementById("onayForm").onsubmit=async e=>{
   e.preventDefault();
   let f=new FormData(e.target);
   let rec={
-    no: ++onayCounter,
-    tarih: f.get("tarih"),
-    plaka: f.get("plaka").toUpperCase(),
-    firma: f.get("firma").toUpperCase(),
-    km: f.get("km"),
-    servis: f.get("servis").toUpperCase(),
-    durum: f.get("durum"),
-    aciklama: f.get("aciklama")||"",
-    tutar: +f.get("tutar"),
-    faturaNo: "",
-    faturaTutar: 0,
-    faturaImage: "",
-    yansitma: f.get("yansitma")
+    no:++onayCounter,
+    tarih:f.get("tarih"),
+    plaka:f.get("plaka").toUpperCase(),
+    firma:f.get("firma").toUpperCase(),
+    km:f.get("km"),
+    servis:f.get("servis").toUpperCase(),
+    durum:f.get("durum"),
+    aciklama:f.get("aciklama")||"",
+    tutar:+f.get("tutar"),
+    faturaNo:"",
+    faturaTutar:0,
+    faturaImage:"",
+    yansitma:f.get("yansitma")
   };
-  db.ref("onayRecords").push(rec).then(()=>e.target.reset());
+  onayRecords.push(rec);
+  save("onayRecords",onayRecords);
+  save("onayCounter",onayCounter);
+  renderOnay();
+  e.target.reset();
 };
 
+/* === Render Onay === */
 function renderOnay(){
-  db.ref("onayRecords").on("value",snap=>{
-    let all=[];
-    snap.forEach(ch=>{
-      all.push({...ch.val(), key:ch.key});
-    });
-
-    // filtreleme
-    let filters=Array.from(document.querySelectorAll("#onayFilter input")).map(i=>i.value.toLowerCase());
-    let headers=["no","tarih","plaka","firma","km","servis","durum","aciklama","tutar","faturaNo","faturaTutar","fark","yansitma"];
-    let filtered=all.filter(r=>headers.every((h,idx)=>{
-      let val=(r[h]!==undefined?r[h]:"")+"";
-      return val.toLowerCase().includes(filters[idx]||"");
-    }));
-
-    let tb=document.querySelector("#onayTable tbody");
-    tb.innerHTML="";
-    let totalPages=Math.ceil(filtered.length/onayPerPage);if(onayPage>totalPages)onayPage=1;
-    let start=(onayPage-1)*onayPerPage;let pageRecords=filtered.slice(start,start+onayPerPage);
-
-    pageRecords.forEach(r=>{
-      let fark=r.faturaTutar-r.tutar;
-      let farkClass=fark>50?"red-cell":(fark>0?"green-cell":"");
-      let tr=document.createElement("tr");
-      tr.innerHTML=`
-        <td>${r.no}</td><td>${r.tarih}</td><td>${r.plaka}</td><td>${r.firma}</td>
-        <td>${r.km}</td><td>${r.servis}</td><td>${r.durum}</td><td>${r.aciklama||""}</td>
-        <td>${fmtTL(r.tutar)}</td><td>${r.faturaNo||""}</td>
-        <td>${r.faturaTutar?fmtTL(r.faturaTutar):""}</td>
-        <td class="${farkClass}">${fark?fmtTL(fark):""}</td>
-        <td>${r.yansitma||""}</td>
-        <td>${r.faturaImage?`<a href="${r.faturaImage}" target="_blank"><img src="${r.faturaImage}" class="preview"></a>`:"-"}</td>
-        <td>
-          <button class="edit-btn" onclick="editOnay('${r.key}')">Düzenle</button>
-          <button class="delete-btn" onclick="deleteOnay('${r.key}')">Sil</button>
-          <button class="edit-btn" onclick="uploadFatura('${r.key}')">Fatura Yükle</button>
-          <button class="delete-btn" onclick="deleteFatura('${r.key}')">Fatura Sil</button>
-        </td>`;
-      tb.appendChild(tr);
-    });
-  });
-}
-renderOnay();
-
-function editOnay(key){
-  db.ref("onayRecords/"+key).once("value").then(s=>{
-    let r=s.val();
-    r.tarih=prompt("Tarih:",r.tarih)||r.tarih;
-    r.plaka=prompt("Plaka:",r.plaka)||r.plaka;
-    r.km=prompt("Km:",r.km)||r.km;
-    r.servis=prompt("Servis:",r.servis)||r.servis;
-    r.durum=prompt("Durum:",r.durum)||r.durum;
-    r.aciklama=prompt("Açıklama:",r.aciklama)||r.aciklama;
-    r.tutar=+(prompt("Tutar:",r.tutar)||r.tutar);
-    r.faturaNo=prompt("Fatura No:",r.faturaNo)||r.faturaNo;
-    r.faturaTutar=+(prompt("Fatura Tutarı:",r.faturaTutar)||r.faturaTutar);
-    r.yansitma=prompt("Yansıtma:",r.yansitma)||r.yansitma;
-    db.ref("onayRecords/"+key).set(r);
-  });
-}
-
-function deleteOnay(key){
-  if(confirm("Bu kaydı silmek istediğinize emin misiniz?")){
-    db.ref("onayRecords/"+key).remove();
-  }
-}
-
-function initOnayFilters(){
-  let filterRow=document.getElementById("onayFilter");
-  let cols=["Onay No","Tarih","Plaka","Firma","Km","Servis","Durum","Açıklama","Tutar","Fatura No","Fatura Tutarı","Fark","Yansıtma","Fatura Görseli","İşlemler"];
-  filterRow.innerHTML="";
-  cols.forEach(c=>{
-    let td=document.createElement("td");
-    if(c!=="İşlemler"){td.innerHTML=`<input onkeyup="renderOnay()" placeholder="Filtre...">`;}
-    filterRow.appendChild(td);
-  });
-}
-initOnayFilters();
-
-/* === OCR + Fatura === */
-async function pdfToImage(file){
-  const pdfData=new Uint8Array(await file.arrayBuffer());
-  const pdf=await pdfjsLib.getDocument({data: pdfData}).promise;
-  const page=await pdf.getPage(1);
-  const viewport=page.getViewport({scale: 2});
-  const canvas=document.createElement("canvas");
-  const ctx=canvas.getContext("2d");
-  canvas.width=viewport.width;canvas.height=viewport.height;
-  await page.render({canvasContext: ctx, viewport: viewport}).promise;
-  return canvas;
-}
-
-function uploadFatura(key){
-  let input=document.createElement("input");
-  input.type="file";input.accept="image/*,.pdf";
-  input.onchange=async e=>{
-    let file=e.target.files[0];
-    if(!file) return;
-    let imageForOCR, imageUrl;
-    if(file.type==="application/pdf"){
-      const canvas=await pdfToImage(file);
-      imageForOCR=canvas; imageUrl=canvas.toDataURL("image/png");
-    } else {
-      imageForOCR=file; imageUrl=URL.createObjectURL(file);
-    }
-    Tesseract.recognize(imageForOCR,'tur').then(({data:{text}})=>{
-      let faturaNoMatch=text.match(/[A-Z0-9]{16}/);
-      let faturaNo=faturaNoMatch?faturaNoMatch[0]:"";
-      let faturaTutar=0;
-      let sayilar=text.match(/[0-9]{1,3}(?:[.\s][0-9]{3})*,[0-9]{2}/g);
-      if(sayilar && sayilar.length){
-        let sonSayi=sayilar[sayilar.length-1];
-        faturaTutar=parseFloat(sonSayi.replace(/\./g,"").replace(/\s/g,"").replace(",","."));
-      }
-      db.ref("onayRecords/"+key).update({faturaNo,faturaTutar,faturaImage:imageUrl});
-      alert("Fatura işlendi ✅\nFatura No: "+faturaNo+"\nTutar: "+faturaTutar+" TL");
-    });
-  };
-  input.click();
-}
-
-function deleteFatura(key){
-  if(confirm("Bu kaydın faturasını silmek istediğinize emin misiniz?")){
-    db.ref("onayRecords/"+key).update({faturaNo:"",faturaTutar:0,faturaImage:""});
-  }
-}
-</script>
-
-
-  <!-- İKAME -->
-  <div id="ikame" class="page">
-    <h2>İKAME ARAÇ</h2>
-    <form id="ikameForm">
-      Müşteri Plakası: <input type="text" id="ikameMusteri" required>
-      Firma: <input type="text" id="ikameFirma" required>
-      İkame Araç Plakası: <input type="text" id="ikamePlaka" required>
-      Km: <input type="number" id="ikameKm" required>
-      Teslim Tarihi: <input type="date" id="ikameTeslim" required>
-      <button type="button" onclick="submitIkame()">Kaydet</button>
-    </form>
-    <table id="ikameTable"><tbody></tbody></table>
-  </div>
-
-  <!-- TESLİM -->
-  <div id="teslim" class="page">
-    <h2>ARAÇ TESLİM</h2>
-    <form id="teslimForm">
-      Teslim Tarihi: <input type="date" id="teslimTarih" required>
-      Plaka: <input type="text" id="teslimPlaka" required>
-      Model: <input type="text" id="teslimModel" required>
-      Firma: <input type="text" id="teslimFirma" required>
-      Teslim Alan Kişi: <input type="text" id="teslimKisi" required>
-      İrtibat No: <input type="text" id="teslimIrtibat" required>
-      <button type="button" onclick="submitTeslim()">Kaydet</button>
-    </form>
-    <table id="teslimTable"><tbody></tbody></table>
-  </div>
-
-  <!-- BİLGİ -->
-  <div id="bilgi" class="page">
-    <h2>ARAÇ/FİRMA BİLGİLERİ</h2>
-    <form id="bilgiForm">
-      Plaka: <input type="text" id="bilgiPlaka" required>
-      Firma: <input type="text" id="bilgiFirma" required>
-      Model: <input type="text" id="bilgiModel">
-      Not: <input type="text" id="bilgiNot">
-      <button type="button" onclick="submitBilgi()">Kaydet</button>
-    </form>
-    <table id="bilgiTable"><tbody></tbody></table>
-  </div>
-
-  <!-- ADMIN PANELİ -->
-  <div id="admin" class="page">
-    <h2>👑 Admin Paneli - Kullanıcı Yetkileri</h2>
-    <table id="userTable"><tbody></tbody></table>
-  </div>
-</div>
-
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
-<script>
-const firebaseConfig = {
-  apiKey: "AIzaSyB-xEmeTVN8oiB4FZzV4UpJpAHkyDHYF4U",
-  authDomain: "sekar-filo.firebaseapp.com",
-  databaseURL: "https://sekar-filo-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "sekar-filo",
-  storageBucket: "sekar-filo.appspot.com",
-  messagingSenderId: "61274893830",
-  appId: "1:61274893830:web:c9dfdf8baf0500178f9d87"
-};
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.database();
-
-// === AUTH ===
-function login() {
-  let email = document.getElementById("email").value;
-  let pass = document.getElementById("password").value;
-  auth.signInWithEmailAndPassword(email, pass).then(u=>{
-    document.getElementById("loginPage").style.display="none";
-    document.getElementById("mainPage").style.display="block";
-    document.getElementById("currentUser").innerText=email;
-    checkRole(u.user.uid);
-    loadAll();
-  }).catch(()=>document.getElementById("loginError").style.display="block");
-}
-function register() {
-  let email = document.getElementById("email").value;
-  let pass = document.getElementById("password").value;
-  auth.createUserWithEmailAndPassword(email, pass).then(cred=>{
-    db.ref("users/"+cred.user.uid).set({email:email,role:"user"});
-    alert("Kayıt başarılı ✅");
-  }).catch(err=>alert("Hata: "+err.message));
-}
-function logout() {
-  auth.signOut().then(()=>{
-    document.getElementById("mainPage").style.display="none";
-    document.getElementById("loginPage").style.display="flex";
-  });
-}
-
-// === ADMIN / ROLE ===
-function checkRole(uid){
-  db.ref("users/"+uid).once("value").then(snap=>{
-    let user=snap.val();
-    if(user && user.role==="admin"){
-      document.getElementById("adminBtn").style.display="inline-block";
-      loadUsers();
-    }
-  });
-}
-function loadUsers(){
-  db.ref("users").on("value",snap=>{
-    let tb=document.querySelector("#userTable tbody");tb.innerHTML="";
-    snap.forEach(ch=>{
-      let u=ch.val();
-      let tr=document.createElement("tr");
-      tr.innerHTML=`<td>${u.email}</td>
+  let tb=document.querySelector("#onayTable tbody"); tb.innerHTML="";
+  let sorted=[...onayRecords].sort((a,b)=>b.no-a.no);
+  let filters=Array.from(document.querySelectorAll("#onayFilter input")).map(i=>i.value.toLowerCase());
+  let headers=["no","tarih","plaka","firma","km","servis","durum","aciklama","tutar","faturaNo","faturaTutar","fark","yansitma"];
+  let filtered=sorted.filter(r=>headers.every((h,idx)=>{ let val=(r[h]!==undefined?r[h]:"")+""; return val.toLowerCase().includes(filters[idx]||""); }));
+  filtered.forEach((r,i)=>{
+    let fark=r.faturaTutar-r.tutar;
+    let farkClass=fark>50?"red-cell":(fark>0?"green-cell":"");
+    let tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td>${r.no}</td><td>${r.tarih}</td><td>${r.plaka}</td><td>${r.firma}</td>
+      <td>${r.km}</td><td>${r.servis}</td><td>${r.durum}</td><td>${r.aciklama||""}</td>
+      <td>${fmtTL(r.tutar)}</td><td>${r.faturaNo||""}</td>
+      <td>${r.faturaTutar?fmtTL(r.faturaTutar):""}</td>
+      <td class="${farkClass}">${fark?fmtTL(fark):""}</td>
+      <td>${r.yansitma||""}</td>
+      <td>${r.faturaImage?`<img src="${r.faturaImage}" class="preview">`:"-"}</td>
       <td>
-        <select onchange="updateRole('${ch.key}',this.value)">
-          <option ${u.role==="user"?"selected":""}>user</option>
-          <option ${u.role==="editor"?"selected":""}>editor</option>
-          <option ${u.role==="admin"?"selected":""}>admin</option>
-        </select>
+        <button class="edit-btn" onclick="editOnay(${i})">Düzenle</button>
+        <button class="delete-btn" onclick="deleteOnay(${i})">Sil</button>
+        <button class="edit-btn" onclick="uploadFatura(${i})">Fatura Yükle</button>
+        <button class="delete-btn" onclick="deleteFatura(${i})">Fatura Sil</button>
       </td>`;
-      tb.appendChild(tr);
-    });
-  });
-}
-function updateRole(uid,role){
-  db.ref("users/"+uid+"/role").set(role);
-}
-
-// === ONAY ===
-function submitOnay(){
-  let rec={
-    tarih: document.getElementById("onayTarih").value,
-    plaka: document.getElementById("onayPlaka").value,
-    firma: document.getElementById("onayFirma").value,
-    km: document.getElementById("onayKm").value,
-    servis: document.getElementById("onayServis").value,
-    durum: document.getElementById("onayDurum").value,
-    aciklama: document.getElementById("onayAciklama").value,
-    tutar: document.getElementById("onayTutar").value
-  };
-  db.ref("onayRecords").push(rec).then(()=>loadOnay());
-  document.getElementById("onayForm").reset();
-}
-function loadOnay(){
-  db.ref("onayRecords").on("value",snap=>{
-    let tb=document.querySelector("#onayTable tbody");tb.innerHTML="";
-    snap.forEach(ch=>{
-      let r=ch.val();
-      let tr=document.createElement("tr");
-      tr.innerHTML=`<td>${r.tarih}</td><td>${r.plaka}</td><td>${r.firma}</td><td>${r.km}</td><td>${r.servis}</td><td>${r.durum}</td><td>${r.aciklama}</td><td>${r.tutar}</td>`;
-      tb.appendChild(tr);
-    });
+    tb.appendChild(tr);
   });
 }
 
-// === İKAME ===
-function submitIkame(){
-  let rec={
-    musteriPlaka: document.getElementById("ikameMusteri").value,
-    firma: document.getElementById("ikameFirma").value,
-    ikamePlaka: document.getElementById("ikamePlaka").value,
-    km: document.getElementById("ikameKm").value,
-    teslim: document.getElementById("ikameTeslim").value
-  };
-  db.ref("ikameRecords").push(rec).then(()=>loadIkame());
-  document.getElementById("ikameForm").reset();
-}
-function loadIkame(){
-  db.ref("ikameRecords").on("value",snap=>{
-    let tb=document.querySelector("#ikameTable tbody");tb.innerHTML="";
-    snap.forEach(ch=>{
-      let r=ch.val();
-      let tr=document.createElement("tr");
-      tr.innerHTML=`<td>${r.musteriPlaka}</td><td>${r.firma}</td><td>${r.ikamePlaka}</td><td>${r.km}</td><td>${r.teslim}</td>`;
-      tb.appendChild(tr);
-    });
-  });
-}
+/* === Edit/Delete === */
+function editOnay(i){ let r=onayRecords[i]; r.aciklama=prompt("Açıklama:",r.aciklama)||r.aciklama; save("onayRecords",onayRecords); renderOnay(); }
+function deleteOnay(i){ if(confirm("Silinsin mi?")){ onayRecords.splice(i,1); save("onayRecords",onayRecords); renderOnay(); } }
+function uploadFatura(i){ let input=document.createElement("input"); input.type="file"; input.onchange=e=>{let file=e.target.files[0]; if(file){let url=URL.createObjectURL(file); onayRecords[i].faturaImage=url; save("onayRecords",onayRecords); renderOnay();}}; input.click();}
+function deleteFatura(i){ onayRecords[i].faturaNo=""; onayRecords[i].faturaTutar=0; onayRecords[i].faturaImage=""; save("onayRecords",onayRecords); renderOnay(); }
 
-// === TESLİM ===
-function submitTeslim(){
-  let rec={
-    tarih: document.getElementById("teslimTarih").value,
-    plaka: document.getElementById("teslimPlaka").value,
-    model: document.getElementById("teslimModel").value,
-    firma: document.getElementById("teslimFirma").value,
-    kisi: document.getElementById("teslimKisi").value,
-    irtibat: document.getElementById("teslimIrtibat").value
-  };
-  db.ref("teslimRecords").push(rec).then(()=>loadTeslim());
-  document.getElementById("teslimForm").reset();
-}
-function loadTeslim(){
-  db.ref("teslimRecords").on("value",snap=>{
-    let tb=document.querySelector("#teslimTable tbody");tb.innerHTML="";
-    snap.forEach(ch=>{
-      let r=ch.val();
-      let tr=document.createElement("tr");
-      tr.innerHTML=`<td>${r.tarih}</td><td>${r.plaka}</td><td>${r.model}</td><td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td>`;
-      tb.appendChild(tr);
-    });
-  });
-}
+/* === Filtre === */
+(function initOnayFilters(){ let row=document.getElementById("onayFilter"); let cols=["Onay No","Tarih","Plaka","Firma","Km","Servis","Durum","Açıklama","Tutar","Fatura No","Fatura Tutarı","Fark","Yansıtma","Fatura Görseli","İşlemler"]; row.innerHTML=""; cols.forEach(c=>{let td=document.createElement("td"); if(c!=="İşlemler"){td.innerHTML=`<input onkeyup="renderOnay()" placeholder="Filtre...">`;} row.appendChild(td);}); })();
 
-// === BİLGİ ===
-function submitBilgi(){
-  let rec={
-    plaka: document.getElementById("bilgiPlaka").value,
-    firma: document.getElementById("bilgiFirma").value,
-    model: document.getElementById("bilgiModel").value,
-    not: document.getElementById("bilgiNot").value
-  };
-  db.ref("bilgiRecords").push(rec).then(()=>loadBilgi());
-  document.getElementById("bilgiForm").reset();
-}
-function loadBilgi(){
-  db.ref("bilgiRecords").on("value",snap=>{
-    let tb=document.querySelector("#bilgiTable tbody");tb.innerHTML="";
-    snap.forEach(ch=>{
-      let r=ch.val();
-      let tr=document.createElement("tr");
-      tr.innerHTML=`<td>${r.plaka}</td><td>${r.firma}</td><td>${r.model}</td><td>${r.not}</td>`;
-      tb.appendChild(tr);
-    });
-  });
-}
+/* === Sayfa Yüklenince === */
+(async function(){
+  onayRecords=await load("onayRecords");
+  let counterVal=await load("onayCounter");
+  if(counterVal) onayCounter=counterVal;
+  renderOnay();
+})();
 
-// === Yardımcı ===
-function loadAll(){loadOnay();loadIkame();loadTeslim();loadBilgi();}
-function showPage(id){document.querySelectorAll('.page').forEach(p=>p.style.display='none');document.getElementById(id).style.display='block';}
+/* === Excel Export === */
+function exportTable(tid,fname){ let rows=Array.from(document.querySelectorAll(`#${tid} tr`)).map(r=>Array.from(r.cells).map(c=>c.innerText)); let csv=rows.map(r=>r.join(";")).join("\n"); let blob=new Blob([csv],{type:'text/csv'}); let link=document.createElement("a"); link.href=URL.createObjectURL(blob); link.download=fname+".csv"; link.click(); }
+
+/* === Login Basit === */
+function login(){ let u=document.getElementById("username").value; let p=document.getElementById("password").value; if(u==="admin"&&p==="1234"){document.getElementById("loginPage").style.display="none";document.getElementById("mainPage").style.display="block";document.getElementById("currentUser").innerText="👤 "+u;}else{document.getElementById("loginError").style.display="block";}}
+function logout(){document.getElementById("mainPage").style.display="none";document.getElementById("loginPage").style.display="flex";}
+function showPage(id){document.querySelectorAll(".page").forEach(p=>p.style.display="none");document.getElementById(id).style.display="block";}
 </script>
 </body>
 </html>
-

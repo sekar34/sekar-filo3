@@ -1,321 +1,82 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-  <meta charset="UTF-8">
-  <title>SEKAR FİLO YÖNETİM HİZMETLERİ</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f5; color: #333; }
-    header { display: flex; align-items: center; background: #006f3c; padding: 15px; justify-content: center; position:relative; }
-    header h1 { color: white; margin: 0; font-size: 24px; }
-    #currentUser { position:absolute; left:20px; top:20px; color:#fff; font-weight:bold; }
-    h2 { color: #006f3c; }
-    .menu { text-align: center; margin: 20px; }
-    .menu button { margin: 10px; padding: 12px 25px; background: #009e52; border: none; color: white; cursor: pointer; border-radius: 5px; font-size: 16px; }
-    .menu button:hover { background: #007a3c; }
-    .page { display: none; margin: 20px; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 0 8px rgba(0,0,0,0.1); }
-    .login-page { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-    .login-box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 8px rgba(0,0,0,0.2); width: 300px; }
-    .login-box input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px; }
-    .login-box button { width: 100%; padding: 10px; background: #006f3c; color: white; border: none; border-radius: 5px; cursor: pointer; }
-    .login-box button:hover { background: #004f2a; }
-    .logout-btn { position: absolute; top: 20px; right: 20px; padding: 8px 16px; background: #900; color: white; border: none; border-radius: 5px; cursor: pointer; }
-    .logout-btn:hover { background: #600; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
-    th,td{ border:1px solid #ccc; padding:6px; text-align:center; }
-    th{ background:#006f3c; color:white; }
-  </style>
-</head>
-<body>
-
-<!-- LOGIN -->
-<div id="loginPage" class="login-page">
-  <div class="login-box">
-    <h2>SEKAR FİLO GİRİŞ</h2>
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Şifre">
-    <button onclick="login()">Giriş Yap</button>
-    <button onclick="register()">Kayıt Ol</button>
-    <p id="loginError" style="color:red; display:none;">Hatalı giriş!</p>
-  </div>
-</div>
-
-<!-- ANA SAYFA -->
-<div id="mainPage" style="display:none;">
-  <header>
-    <span id="currentUser"></span>
-    <h1>SEKAR FİLO YÖNETİM HİZMETLERİ</h1>
-    <button class="logout-btn" onclick="logout()">Çıkış Yap</button>
-  </header>
-
-  <div class="menu">
-    <button onclick="showPage('onay')">ONAY NO</button>
-    <button onclick="showPage('ikame')">İKAME ARAÇ</button>
-    <button onclick="showPage('teslim')">ARAÇ TESLİM</button>
-    <button onclick="showPage('bilgi')">ARAÇ/FİRMA BİLGİLERİ</button>
-    <button onclick="showPage('password')">🔑 ŞİFRE DEĞİŞTİR</button>
-    <button id="adminBtn" style="display:none;" onclick="showPage('admin')">👑 ADMIN PANELİ</button>
-  </div>
-
-  <!-- ONAY -->
-  <div id="onay" class="page">
-    <h2>ONAY NO</h2>
-    <form id="onayForm">
-      Tarih: <input type="date" id="onayTarih" required>
-      Plaka: <input type="text" id="onayPlaka" required>
-      Firma: <input type="text" id="onayFirma" required>
-      Km: <input type="number" id="onayKm" required>
-      Servis: <input type="text" id="onayServis" required>
-      Durum: <input type="text" id="onayDurum" required>
-      Açıklama: <input type="text" id="onayAciklama">
-      Tutar: <input type="number" id="onayTutar" required>
-      <button type="button" onclick="submitOnay()">Kaydet</button>
-    </form>
-    <table id="onayTable"><tbody></tbody></table>
-  </div>
-
-  <!-- İKAME -->
-  <div id="ikame" class="page">
-    <h2>İKAME ARAÇ</h2>
-    <form id="ikameForm">
-      Müşteri Plakası: <input type="text" id="ikameMusteri" required>
-      Firma: <input type="text" id="ikameFirma" required>
-      İkame Araç Plakası: <input type="text" id="ikamePlaka" required>
-      Km: <input type="number" id="ikameKm" required>
-      Teslim Tarihi: <input type="date" id="ikameTeslim" required>
-      <button type="button" onclick="submitIkame()">Kaydet</button>
-    </form>
-    <table id="ikameTable"><tbody></tbody></table>
-  </div>
-
-  <!-- TESLİM -->
-  <div id="teslim" class="page">
-    <h2>ARAÇ TESLİM</h2>
-    <form id="teslimForm">
-      Teslim Tarihi: <input type="date" id="teslimTarih" required>
-      Plaka: <input type="text" id="teslimPlaka" required>
-      Model: <input type="text" id="teslimModel" required>
-      Firma: <input type="text" id="teslimFirma" required>
-      Teslim Alan Kişi: <input type="text" id="teslimKisi" required>
-      İrtibat No: <input type="text" id="teslimIrtibat" required>
-      <button type="button" onclick="submitTeslim()">Kaydet</button>
-    </form>
-    <table id="teslimTable"><tbody></tbody></table>
-  </div>
-
-  <!-- BİLGİ -->
-  <div id="bilgi" class="page">
-    <h2>ARAÇ/FİRMA BİLGİLERİ</h2>
-    <form id="bilgiForm">
-      Plaka: <input type="text" id="bilgiPlaka" required>
-      Firma: <input type="text" id="bilgiFirma" required>
-      Model: <input type="text" id="bilgiModel">
-      Not: <input type="text" id="bilgiNot">
-      <button type="button" onclick="submitBilgi()">Kaydet</button>
-    </form>
-    <table id="bilgiTable"><tbody></tbody></table>
-  </div>
-
-  <!-- ŞİFRE DEĞİŞTİR -->
-  <div id="password" class="page">
-    <h2>🔑 Şifre Değiştir</h2>
-    <input type="password" id="newPassword" placeholder="Yeni Şifre">
-    <button onclick="changePassword()">Güncelle</button>
-  </div>
-
-  <!-- ADMIN PANELİ -->
-  <div id="admin" class="page">
-    <h2>👑 Admin Paneli - Kullanıcı Yetkileri</h2>
-    <table id="userTable"><tbody></tbody></table>
-  </div>
-</div>
-
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyB-xEmeTVN8oiB4FZzV4UpJpAHkyDHYF4U",
-  authDomain: "sekar-filo.firebaseapp.com",
-  databaseURL: "https://sekar-filo-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "sekar-filo",
-  storageBucket: "sekar-filo.appspot.com",
-  messagingSenderId: "61274893830",
-  appId: "1:61274893830:web:c9dfdf8baf0500178f9d87"
-};
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.database();
-
-// === AUTH ===
-function login() {
-  let email = document.getElementById("email").value;
-  let pass = document.getElementById("password").value;
-  auth.signInWithEmailAndPassword(email, pass).then(u=>{
-    document.getElementById("loginPage").style.display="none";
-    document.getElementById("mainPage").style.display="block";
-    document.getElementById("currentUser").innerText=email;
-    checkRole(u.user.uid);
-    loadAll();
-  }).catch(()=>document.getElementById("loginError").style.display="block");
-}
-function register() {
-  let email = document.getElementById("email").value;
-  let pass = document.getElementById("password").value;
-  auth.createUserWithEmailAndPassword(email, pass).then(cred=>{
-    db.ref("users/"+cred.user.uid).set({email:email,role:"user"});
-    alert("Kayıt başarılı ✅");
-  }).catch(err=>alert("Hata: "+err.message));
-}
-function logout() {
-  auth.signOut().then(()=>{
-    document.getElementById("mainPage").style.display="none";
-    document.getElementById("loginPage").style.display="flex";
-  });
-}
-
-// === ŞİFRE DEĞİŞTİR ===
-function changePassword(){
-  let np=document.getElementById("newPassword").value;
-  auth.currentUser.updatePassword(np).then(()=>alert("Şifre güncellendi ✅"))
-  .catch(err=>alert("Hata: "+err.message));
-}
-
-// === ADMIN / ROLE ===
-function checkRole(uid){
-  db.ref("users/"+uid).once("value").then(snap=>{
-    let user=snap.val();
-    if(user && user.role==="admin"){
-      document.getElementById("adminBtn").style.display="inline-block";
-      loadUsers();
-    }
-  });
-}
-function loadUsers(){
-  db.ref("users").on("value",snap=>{
-    let tb=document.querySelector("#userTable tbody");tb.innerHTML="";
-    snap.forEach(ch=>{
-      let u=ch.val();
-      let tr=document.createElement("tr");
-      tr.innerHTML=`<td>${u.email}</td>
-      <td>
-        <select onchange="updateRole('${ch.key}',this.value)">
-          <option ${u.role==="user"?"selected":""}>user</option>
-          <option ${u.role==="editor"?"selected":""}>editor</option>
-          <option ${u.role==="admin"?"selected":""}>admin</option>
-        </select>
-      </td>`;
-      tb.appendChild(tr);
-    });
-  });
-}
-function updateRole(uid,role){
-  db.ref("users/"+uid+"/role").set(role);
-}
-
-// === ONAY ===
 function submitOnay(){
   let rec={
-    tarih: document.getElementById("onayTarih").value,
-    plaka: document.getElementById("onayPlaka").value,
-    firma: document.getElementById("onayFirma").value,
-    km: document.getElementById("onayKm").value,
-    servis: document.getElementById("onayServis").value,
-    durum: document.getElementById("onayDurum").value,
-    aciklama: document.getElementById("onayAciklama").value,
-    tutar: document.getElementById("onayTutar").value
+    tarih:onayTarih.value,
+    plaka:onayPlaka.value,
+    firma:onayFirma.value,
+    km:onayKm.value,
+    servis:onayServis.value,
+    durum:onayDurum.value,
+    aciklama:onayAciklama.value,
+    tutar:onayTutar.value
   };
   db.ref("onayRecords").push(rec).then(()=>loadOnay());
-  document.getElementById("onayForm").reset();
+  onayForm.reset();
 }
+
+// Tabloyu yükle
 function loadOnay(){
   db.ref("onayRecords").on("value",snap=>{
-    let tb=document.querySelector("#onayTable tbody");tb.innerHTML="";
+    let tb=onayTable.querySelector("tbody");tb.innerHTML="";
     snap.forEach(ch=>{
       let r=ch.val();
-      let tr=document.createElement("tr");
-      tr.innerHTML=`<td>${r.tarih}</td><td>${r.plaka}</td><td>${r.firma}</td><td>${r.km}</td><td>${r.servis}</td><td>${r.durum}</td><td>${r.aciklama}</td><td>${r.tutar}</td>`;
-      tb.appendChild(tr);
+      tb.innerHTML+=`
+        <tr>
+          <td>${r.tarih}</td>
+          <td>${r.plaka}</td>
+          <td>${r.firma}</td>
+          <td>${r.km}</td>
+          <td>${r.servis}</td>
+          <td>${r.durum}</td>
+          <td>${r.aciklama}</td>
+          <td>${r.tutar}</td>
+          <td>
+            <button onclick='editOnay("${ch.key}", ${JSON.stringify(r)})'>✏️ Düzenle</button>
+            <button onclick='deleteOnay("${ch.key}")'>❌ Sil</button>
+          </td>
+        </tr>`;
     });
   });
 }
 
-// === İKAME ===
-function submitIkame(){
-  let rec={
-    musteriPlaka: document.getElementById("ikameMusteri").value,
-    firma: document.getElementById("ikameFirma").value,
-    ikamePlaka: document.getElementById("ikamePlaka").value,
-    km: document.getElementById("ikameKm").value,
-    teslim: document.getElementById("ikameTeslim").value
-  };
-  db.ref("ikameRecords").push(rec).then(()=>loadIkame());
-  document.getElementById("ikameForm").reset();
-}
-function loadIkame(){
-  db.ref("ikameRecords").on("value",snap=>{
-    let tb=document.querySelector("#ikameTable tbody");tb.innerHTML="";
-    snap.forEach(ch=>{
-      let r=ch.val();
-      let tr=document.createElement("tr");
-      tr.innerHTML=`<td>${r.musteriPlaka}</td><td>${r.firma}</td><td>${r.ikamePlaka}</td><td>${r.km}</td><td>${r.teslim}</td>`;
-      tb.appendChild(tr);
-    });
-  });
+// Kayıt sil
+function deleteOnay(id){
+  if(confirm("Bu kayıt silinsin mi?")){
+    db.ref("onayRecords/"+id).remove();
+  }
 }
 
-// === TESLİM ===
-function submitTeslim(){
-  let rec={
-    tarih: document.getElementById("teslimTarih").value,
-    plaka: document.getElementById("teslimPlaka").value,
-    model: document.getElementById("teslimModel").value,
-    firma: document.getElementById("teslimFirma").value,
-    kisi: document.getElementById("teslimKisi").value,
-    irtibat: document.getElementById("teslimIrtibat").value
-  };
-  db.ref("teslimRecords").push(rec).then(()=>loadTeslim());
-  document.getElementById("teslimForm").reset();
-}
-function loadTeslim(){
-  db.ref("teslimRecords").on("value",snap=>{
-    let tb=document.querySelector("#teslimTable tbody");tb.innerHTML="";
-    snap.forEach(ch=>{
-      let r=ch.val();
-      let tr=document.createElement("tr");
-      tr.innerHTML=`<td>${r.tarih}</td><td>${r.plaka}</td><td>${r.model}</td><td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td>`;
-      tb.appendChild(tr);
-    });
-  });
-}
+// Kayıt düzenle
+function editOnay(id, rec){
+  onayTarih.value = rec.tarih;
+  onayPlaka.value = rec.plaka;
+  onayFirma.value = rec.firma;
+  onayKm.value = rec.km;
+  onayServis.value = rec.servis;
+  onayDurum.value = rec.durum;
+  onayAciklama.value = rec.aciklama;
+  onayTutar.value = rec.tutar;
 
-// === BİLGİ ===
-function submitBilgi(){
-  let rec={
-    plaka: document.getElementById("bilgiPlaka").value,
-    firma: document.getElementById("bilgiFirma").value,
-    model: document.getElementById("bilgiModel").value,
-    not: document.getElementById("bilgiNot").value
-  };
-  db.ref("bilgiRecords").push(rec).then(()=>loadBilgi());
-  document.getElementById("bilgiForm").reset();
-}
-function loadBilgi(){
-  db.ref("bilgiRecords").on("value",snap=>{
-    let tb=document.querySelector("#bilgiTable tbody");tb.innerHTML="";
-    snap.forEach(ch=>{
-      let r=ch.val();
-      let tr=document.createElement("tr");
-      tr.innerHTML=`<td>${r.plaka}</td><td>${r.firma}</td><td>${r.model}</td><td>${r.not}</td>`;
-      tb.appendChild(tr);
+  // Kaydet butonunu Güncelle moduna al
+  let btn = document.querySelector("#onayForm button");
+  btn.innerText = "Güncelle";
+  btn.onclick = function(){
+    let updated = {
+      tarih:onayTarih.value,
+      plaka:onayPlaka.value,
+      firma:onayFirma.value,
+      km:onayKm.value,
+      servis:onayServis.value,
+      durum:onayDurum.value,
+      aciklama:onayAciklama.value,
+      tutar:onayTutar.value
+    };
+    db.ref("onayRecords/"+id).set(updated).then(()=>{
+      loadOnay();
+      onayForm.reset();
+      btn.innerText="Kaydet";
+      btn.onclick = submitOnay;
     });
-  });
+  }
 }
-
-// === Yardımcı ===
-function loadAll(){loadOnay();loadIkame();loadTeslim();loadBilgi();}
-function showPage(id){document.querySelectorAll('.page').forEach(p=>p.style.display='none');document.getElementById(id).style.display='block';}
 </script>
-</body>
-</html>

@@ -56,7 +56,7 @@
     <button id="adminBtn" style="display:none;" onclick="showPage('admin')">👑 ADMIN PANELİ</button>
   </div>
 
-  <!-- ÖRNEK: SADECE ONAY NO FORMU GÖSTERİYORUM -->
+  <!-- ONAY -->
   <div id="onay" class="page">
     <h2>ONAY NO</h2>
     <form id="onayForm">
@@ -73,6 +73,60 @@
     <table id="onayTable"><tbody></tbody></table>
   </div>
 
+  <!-- İKAME -->
+  <div id="ikame" class="page">
+    <h2>İKAME ARAÇ</h2>
+    <form id="ikameForm">
+      Müşteri Plakası: <input type="text" id="ikameMusteri" required>
+      Firma: <input type="text" id="ikameFirma" required>
+      İkame Araç Plakası: <input type="text" id="ikamePlaka" required>
+      Km: <input type="number" id="ikameKm" required>
+      Teslim Tarihi: <input type="date" id="ikameTeslim" required>
+      <button type="button" onclick="submitIkame()">Kaydet</button>
+    </form>
+    <table id="ikameTable"><tbody></tbody></table>
+  </div>
+
+  <!-- TESLİM -->
+  <div id="teslim" class="page">
+    <h2>ARAÇ TESLİM</h2>
+    <form id="teslimForm">
+      Teslim Tarihi: <input type="date" id="teslimTarih" required>
+      Plaka: <input type="text" id="teslimPlaka" required>
+      Model: <input type="text" id="teslimModel" required>
+      Firma: <input type="text" id="teslimFirma" required>
+      Teslim Alan Kişi: <input type="text" id="teslimKisi" required>
+      İrtibat No: <input type="text" id="teslimIrtibat" required>
+      <button type="button" onclick="submitTeslim()">Kaydet</button>
+    </form>
+    <table id="teslimTable"><tbody></tbody></table>
+  </div>
+
+  <!-- BİLGİ -->
+  <div id="bilgi" class="page">
+    <h2>ARAÇ/FİRMA BİLGİLERİ</h2>
+    <form id="bilgiForm">
+      Plaka: <input type="text" id="bilgiPlaka" required>
+      Firma: <input type="text" id="bilgiFirma" required>
+      Model: <input type="text" id="bilgiModel">
+      Not: <input type="text" id="bilgiNot">
+      <button type="button" onclick="submitBilgi()">Kaydet</button>
+    </form>
+    <table id="bilgiTable"><tbody></tbody></table>
+  </div>
+
+  <!-- ŞİFRE DEĞİŞTİR -->
+  <div id="password" class="page">
+    <h2>🔑 Şifre Değiştir</h2>
+    <input type="password" id="newPassword" placeholder="Yeni Şifre">
+    <button onclick="changePassword()">Güncelle</button>
+  </div>
+
+  <!-- ADMIN PANELİ -->
+  <div id="admin" class="page">
+    <h2>👑 Admin Paneli - Kullanıcı Yetkileri</h2>
+    <table id="userTable"><tbody></tbody></table>
+  </div>
 </div>
 
 <!-- Firebase SDK -->
@@ -102,7 +156,8 @@ function login() {
     document.getElementById("loginPage").style.display="none";
     document.getElementById("mainPage").style.display="block";
     document.getElementById("currentUser").innerText=email;
-    loadOnay();
+    checkRole(u.user.uid);
+    loadAll();
   }).catch(()=>document.getElementById("loginError").style.display="block");
 }
 function register() {
@@ -118,6 +173,45 @@ function logout() {
     document.getElementById("mainPage").style.display="none";
     document.getElementById("loginPage").style.display="flex";
   });
+}
+
+// === ŞİFRE DEĞİŞTİR ===
+function changePassword(){
+  let np=document.getElementById("newPassword").value;
+  auth.currentUser.updatePassword(np).then(()=>alert("Şifre güncellendi ✅"))
+  .catch(err=>alert("Hata: "+err.message));
+}
+
+// === ADMIN / ROLE ===
+function checkRole(uid){
+  db.ref("users/"+uid).once("value").then(snap=>{
+    let user=snap.val();
+    if(user && user.role==="admin"){
+      document.getElementById("adminBtn").style.display="inline-block";
+      loadUsers();
+    }
+  });
+}
+function loadUsers(){
+  db.ref("users").on("value",snap=>{
+    let tb=document.querySelector("#userTable tbody");tb.innerHTML="";
+    snap.forEach(ch=>{
+      let u=ch.val();
+      let tr=document.createElement("tr");
+      tr.innerHTML=`<td>${u.email}</td>
+      <td>
+        <select onchange="updateRole('${ch.key}',this.value)">
+          <option ${u.role==="user"?"selected":""}>user</option>
+          <option ${u.role==="editor"?"selected":""}>editor</option>
+          <option ${u.role==="admin"?"selected":""}>admin</option>
+        </select>
+      </td>`;
+      tb.appendChild(tr);
+    });
+  });
+}
+function updateRole(uid,role){
+  db.ref("users/"+uid+"/role").set(role);
 }
 
 // === ONAY ===
@@ -146,6 +240,82 @@ function loadOnay(){
     });
   });
 }
+
+// === İKAME ===
+function submitIkame(){
+  let rec={
+    musteriPlaka: document.getElementById("ikameMusteri").value,
+    firma: document.getElementById("ikameFirma").value,
+    ikamePlaka: document.getElementById("ikamePlaka").value,
+    km: document.getElementById("ikameKm").value,
+    teslim: document.getElementById("ikameTeslim").value
+  };
+  db.ref("ikameRecords").push(rec).then(()=>loadIkame());
+  document.getElementById("ikameForm").reset();
+}
+function loadIkame(){
+  db.ref("ikameRecords").on("value",snap=>{
+    let tb=document.querySelector("#ikameTable tbody");tb.innerHTML="";
+    snap.forEach(ch=>{
+      let r=ch.val();
+      let tr=document.createElement("tr");
+      tr.innerHTML=`<td>${r.musteriPlaka}</td><td>${r.firma}</td><td>${r.ikamePlaka}</td><td>${r.km}</td><td>${r.teslim}</td>`;
+      tb.appendChild(tr);
+    });
+  });
+}
+
+// === TESLİM ===
+function submitTeslim(){
+  let rec={
+    tarih: document.getElementById("teslimTarih").value,
+    plaka: document.getElementById("teslimPlaka").value,
+    model: document.getElementById("teslimModel").value,
+    firma: document.getElementById("teslimFirma").value,
+    kisi: document.getElementById("teslimKisi").value,
+    irtibat: document.getElementById("teslimIrtibat").value
+  };
+  db.ref("teslimRecords").push(rec).then(()=>loadTeslim());
+  document.getElementById("teslimForm").reset();
+}
+function loadTeslim(){
+  db.ref("teslimRecords").on("value",snap=>{
+    let tb=document.querySelector("#teslimTable tbody");tb.innerHTML="";
+    snap.forEach(ch=>{
+      let r=ch.val();
+      let tr=document.createElement("tr");
+      tr.innerHTML=`<td>${r.tarih}</td><td>${r.plaka}</td><td>${r.model}</td><td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td>`;
+      tb.appendChild(tr);
+    });
+  });
+}
+
+// === BİLGİ ===
+function submitBilgi(){
+  let rec={
+    plaka: document.getElementById("bilgiPlaka").value,
+    firma: document.getElementById("bilgiFirma").value,
+    model: document.getElementById("bilgiModel").value,
+    not: document.getElementById("bilgiNot").value
+  };
+  db.ref("bilgiRecords").push(rec).then(()=>loadBilgi());
+  document.getElementById("bilgiForm").reset();
+}
+function loadBilgi(){
+  db.ref("bilgiRecords").on("value",snap=>{
+    let tb=document.querySelector("#bilgiTable tbody");tb.innerHTML="";
+    snap.forEach(ch=>{
+      let r=ch.val();
+      let tr=document.createElement("tr");
+      tr.innerHTML=`<td>${r.plaka}</td><td>${r.firma}</td><td>${r.model}</td><td>${r.not}</td>`;
+      tb.appendChild(tr);
+    });
+  });
+}
+
+// === Yardımcı ===
+function loadAll(){loadOnay();loadIkame();loadTeslim();loadBilgi();}
+function showPage(id){document.querySelectorAll('.page').forEach(p=>p.style.display='none');document.getElementById(id).style.display='block';}
 </script>
 </body>
 </html>

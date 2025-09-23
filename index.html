@@ -1,82 +1,660 @@
-<script>
-function submitOnay(){
-  let rec={
-    tarih:onayTarih.value,
-    plaka:onayPlaka.value,
-    firma:onayFirma.value,
-    km:onayKm.value,
-    servis:onayServis.value,
-    durum:onayDurum.value,
-    aciklama:onayAciklama.value,
-    tutar:onayTutar.value
-  };
-  db.ref("onayRecords").push(rec).then(()=>loadOnay());
-  onayForm.reset();
-}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>SEKAR FİLO YÖNETİM HİZMETLERİ</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f5; color: #333; }
+    header { display: flex; align-items: center; background: #006f3c; padding: 15px; justify-content: center; position:relative; }
+    header img { width: 4cm; height: auto; margin-right: 20px; }
+    header h1 { color: white; margin: 0; font-size: 24px; }
+    #currentUser { position:absolute; left:20px; top:20px; color:#fff; font-weight:bold; }
+    h2 { color: #006f3c; }
+    .menu { text-align: center; margin: 20px; }
+    .menu button { margin: 10px; padding: 12px 25px; background: #009e52; border: none; color: white; cursor: pointer; border-radius: 5px; font-size: 16px; }
+    .menu button:hover { background: #007a3c; }
+    .page { display: none; margin: 20px; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 0 8px rgba(0,0,0,0.1); }
+    .login-page { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+    .login-box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 8px rgba(0,0,0,0.2); width: 300px; }
+    .login-box h2 { margin-top: 0; text-align: center; }
+    .login-box input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px; }
+    .login-box button { width: 100%; padding: 10px; background: #006f3c; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    .login-box button:hover { background: #004f2a; }
+    .logout-btn { position: absolute; top: 20px; right: 20px; padding: 8px 16px; background: #900; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    .logout-btn:hover { background: #600; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+    th,td{ border:1px solid #ccc; padding:6px; text-align:center; }
+    th{ background:#006f3c; color:white; }
+    .edit-btn { background: orange; color: white; padding: 4px 8px; border: none; border-radius: 3px; cursor: pointer; margin:2px; }
+    .delete-btn { background: red; color: white; padding: 4px 8px; border: none; border-radius: 3px; cursor: pointer; margin:2px; }
+    .export-btn { margin-top: 10px; padding: 8px 16px; background: #006f3c; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    .export-btn:hover { background: #004f2a; }
+    .filter-row input { width: 95%; padding: 4px; font-size: 12px; }
+    .passive { background: #eee; color: #666; }
+    .red-cell { background: #ffcccc; color: #900; font-weight: bold; }
+    .green-cell { background: #ccffcc; color: #060; font-weight: bold; }
+    img.preview { max-width:100px; max-height:100px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+</head>
+<body>
 
-// Tabloyu yükle
-function loadOnay(){
-  db.ref("onayRecords").on("value",snap=>{
-    let tb=onayTable.querySelector("tbody");tb.innerHTML="";
-    snap.forEach(ch=>{
-      let r=ch.val();
-      tb.innerHTML+=`
+<!-- LOGIN -->
+<div id="loginPage" class="login-page">
+  <div class="login-box">
+    <h2>SEKAR FİLO GİRİŞ</h2>
+    <input type="text" id="username" placeholder="Kullanıcı Adı" required>
+    <input type="password" id="password" placeholder="Şifre" required>
+    <button onclick="login()">Giriş Yap</button>
+    <p id="loginError" style="color:red; display:none;">Hatalı giriş!</p>
+  </div>
+</div>
+
+<!-- ANA SAYFA -->
+<div id="mainPage" style="display:none;">
+  <header>
+    <span id="currentUser"></span>
+    <img src="2023-10-18.webp" alt="SEKAR Logo">
+    <h1>SEKAR FİLO YÖNETİM HİZMETLERİ</h1>
+    <button class="logout-btn" onclick="logout()">Çıkış Yap</button>
+  </header>
+
+  <div class="menu">
+    <button data-page="onay" onclick="showPage('onay')">ONAY NO</button>
+    <button data-page="ikame" onclick="showPage('ikame')">İKAME ARAÇ</button>
+    <button data-page="teslim" onclick="showPage('teslim')">ARAÇ TESLİM</button>
+    <button data-page="bilgi" onclick="showPage('bilgi')">ARAÇ/FİRMA BİLGİLERİ</button>
+    <button data-page="admin" onclick="showPage('admin')">👑 ADMIN PANELİ</button>
+    <button data-page="roles" onclick="showPage('roles')">⚙️ YETKİ AYARLARI</button>
+    <button data-page="profile" onclick="showPage('profile')">🔑 ŞİFRE DEĞİŞTİR</button>
+  </div>
+
+  <!-- ONAY NO -->
+  <div id="onay" class="page">
+    <h2>ONAY NO</h2>
+    <form id="onayForm">
+      Tarih: <input type="date" name="tarih" required>
+      Plaka: <input list="plakaList" name="plaka" onchange="autoFillFirmaOnay(this.value)" required>
+      Firma: <input type="text" name="firma" readonly>
+      Km: <input type="number" name="km" required>
+      Servis: <input type="text" name="servis" required>
+      Durum:
+      <select name="durum" required>
+        <option value="">Seçiniz</option>
+        <option value="BAKIM">BAKIM</option>
+        <option value="HASAR">HASAR</option>
+        <option value="MEKANİK">MEKANİK</option>
+        <option value="LASTİK">LASTİK</option>
+        <option value="DİĞER">DİĞER</option>
+      </select>
+      Açıklama: <input type="text" name="aciklama" placeholder="Durum açıklaması">
+      Tutar: <input type="number" name="tutar" required>
+      Yansıtma: <input type="text" name="yansitma">
+      <button type="submit">Kaydet</button>
+    </form>
+    <table id="onayTable">
+      <thead>
         <tr>
-          <td>${r.tarih}</td>
-          <td>${r.plaka}</td>
-          <td>${r.firma}</td>
-          <td>${r.km}</td>
-          <td>${r.servis}</td>
-          <td>${r.durum}</td>
-          <td>${r.aciklama}</td>
-          <td>${r.tutar}</td>
-          <td>
-            <button onclick='editOnay("${ch.key}", ${JSON.stringify(r)})'>✏️ Düzenle</button>
-            <button onclick='deleteOnay("${ch.key}")'>❌ Sil</button>
-          </td>
-        </tr>`;
-    });
-  });
+          <th>Onay No</th><th>Tarih</th><th>Plaka</th><th>Firma</th><th>Km</th><th>Servis</th>
+          <th>Durum</th><th>Açıklama</th><th>Tutar</th><th>Fatura No</th>
+          <th>Fatura Tutarı</th><th>Fark</th><th>Yansıtma</th><th>Fatura Görseli</th><th>İşlemler</th>
+        </tr>
+        <tr id="onayFilter" class="filter-row"></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div id="onayPagination"></div>
+    <button class="export-btn" onclick="exportTable('onayTable','OnayNo')">Excel'e Aktar</button>
+  </div>
+<script>
+/* === Yardımcı Fonksiyonlar === */
+const save=(k,d)=>localStorage.setItem(k,JSON.stringify(d));
+const load=k=>JSON.parse(localStorage.getItem(k)||"[]");
+const fmtTL=v=>v?new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY'}).format(v):"";
+function exportTable(tid,fname){
+  let rows=Array.from(document.querySelectorAll(`#${tid} tr`)).map(r=>Array.from(r.cells).map(c=>c.innerText));
+  let csv=rows.map(r=>r.join(";")).join("\n");
+  let blob=new Blob([csv],{type:'text/csv'});
+  let link=document.createElement("a");
+  link.href=URL.createObjectURL(blob);
+  link.download=fname+".csv";
+  link.click();
 }
 
-// Kayıt sil
-function deleteOnay(id){
-  if(confirm("Bu kayıt silinsin mi?")){
-    db.ref("onayRecords/"+id).remove();
+/* === ONAY === */
+let onayRecords=load("onayRecords");
+let onayCounter=Number(localStorage.getItem("onayCounter")||20250000);
+let onayPage=1,onayPerPage=25;
+
+document.getElementById("onayForm").onsubmit=e=>{
+  e.preventDefault();
+  let f=new FormData(e.target);
+  let rec={
+    no:++onayCounter,
+    tarih:f.get("tarih"),
+    plaka:f.get("plaka").toUpperCase(),
+    firma:f.get("firma").toUpperCase(),
+    km:f.get("km"),
+    servis:f.get("servis").toUpperCase(),
+    durum:f.get("durum"),
+    aciklama:f.get("aciklama")||"",
+    tutar:+f.get("tutar"),
+    faturaNo:"",
+    faturaTutar:0,
+    faturaImage:"",
+    yansitma:f.get("yansitma")
+  };
+  onayRecords.push(rec);
+  save("onayRecords",onayRecords);
+  localStorage.setItem("onayCounter",onayCounter);
+  renderOnay();
+  e.target.reset();
+};
+
+function renderOnay(){
+  let tb=document.querySelector("#onayTable tbody");
+  tb.innerHTML="";
+  let sorted=[...onayRecords].sort((a,b)=>b.no-a.no);
+  let filters=Array.from(document.querySelectorAll("#onayFilter input")).map(i=>i.value.toLowerCase());
+  let headers=["no","tarih","plaka","firma","km","servis","durum","aciklama","tutar","faturaNo","faturaTutar","fark","yansitma"];
+  let filtered=sorted.filter(r=>headers.every((h,idx)=>{
+    let val=(r[h]!==undefined?r[h]:"")+"";
+    return val.toLowerCase().includes(filters[idx]||"");
+  }));
+  let totalPages=Math.ceil(filtered.length/onayPerPage);if(onayPage>totalPages)onayPage=1;
+  let start=(onayPage-1)*onayPerPage;let pageRecords=filtered.slice(start,start+onayPerPage);
+
+  let loggedIn=JSON.parse(localStorage.getItem("loggedInUser")||"{}");
+  let isAdmin=loggedIn.username==="admin";
+
+  pageRecords.forEach(r=>{
+    let index=onayRecords.indexOf(r);
+    let fark=r.faturaTutar-r.tutar;
+    let farkClass=fark>50?"red-cell":(fark>0?"green-cell":"");
+    let tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td>${r.no}</td><td>${r.tarih}</td><td>${r.plaka}</td><td>${r.firma}</td>
+      <td>${r.km}</td><td>${r.servis}</td><td>${r.durum}</td><td>${r.aciklama||""}</td>
+      <td>${fmtTL(r.tutar)}</td><td>${r.faturaNo||""}</td>
+      <td>${r.faturaTutar?fmtTL(r.faturaTutar):""}</td>
+      <td class="${farkClass}">${fark?fmtTL(fark):""}</td>
+      <td>${r.yansitma||""}</td>
+      <td>${r.faturaImage?`<a href="${r.faturaImage}" target="_blank"><img src="${r.faturaImage}" class="preview"></a>`:"-"}</td>
+      <td>
+        <button class="edit-btn" onclick="editOnay(${index})">Düzenle</button>
+        ${isAdmin?`<button class="delete-btn" onclick="deleteOnay(${index})">Sil</button>`:""}
+        <button class="edit-btn" onclick="uploadFatura(${index})">Fatura Yükle</button>
+        <button class="delete-btn" onclick="deleteFatura(${index})">Fatura Sil</button>
+      </td>`;
+    tb.appendChild(tr);
+  });
+
+  let pag=document.getElementById("onayPagination");
+  pag.innerHTML="";
+  for(let p=1;p<=totalPages;p++){
+    let btn=document.createElement("button");
+    btn.textContent=p;btn.disabled=(p===onayPage);
+    btn.onclick=()=>{onayPage=p;renderOnay();};
+    pag.appendChild(btn);
   }
 }
 
-// Kayıt düzenle
-function editOnay(id, rec){
-  onayTarih.value = rec.tarih;
-  onayPlaka.value = rec.plaka;
-  onayFirma.value = rec.firma;
-  onayKm.value = rec.km;
-  onayServis.value = rec.servis;
-  onayDurum.value = rec.durum;
-  onayAciklama.value = rec.aciklama;
-  onayTutar.value = rec.tutar;
+function editOnay(i){
+  let r=onayRecords[i];
+  r.tarih=prompt("Tarih:",r.tarih)||r.tarih;
+  r.plaka=prompt("Plaka:",r.plaka)||r.plaka;
+  r.km=prompt("Km:",r.km)||r.km;
+  r.servis=prompt("Servis:",r.servis)||r.servis;
+  r.durum=prompt("Durum:",r.durum)||r.durum;
+  r.aciklama=prompt("Açıklama:",r.aciklama)||r.aciklama;
+  r.tutar=+(prompt("Tutar:",r.tutar)||r.tutar);
+  r.faturaNo=prompt("Fatura No:",r.faturaNo)||r.faturaNo;
+  r.faturaTutar=+(prompt("Fatura Tutarı:",r.faturaTutar)||r.faturaTutar);
+  r.yansitma=prompt("Yansıtma:",r.yansitma)||r.yansitma;
+  save("onayRecords",onayRecords);
+  renderOnay();
+}
 
-  // Kaydet butonunu Güncelle moduna al
-  let btn = document.querySelector("#onayForm button");
-  btn.innerText = "Güncelle";
-  btn.onclick = function(){
-    let updated = {
-      tarih:onayTarih.value,
-      plaka:onayPlaka.value,
-      firma:onayFirma.value,
-      km:onayKm.value,
-      servis:onayServis.value,
-      durum:onayDurum.value,
-      aciklama:onayAciklama.value,
-      tutar:onayTutar.value
-    };
-    db.ref("onayRecords/"+id).set(updated).then(()=>{
-      loadOnay();
-      onayForm.reset();
-      btn.innerText="Kaydet";
-      btn.onclick = submitOnay;
+function deleteOnay(i){
+  if(confirm("Bu kaydı silmek istediğinize emin misiniz?")){
+    onayRecords.splice(i,1);
+    save("onayRecords",onayRecords);
+    renderOnay();
+  }
+}
+
+function initOnayFilters(){
+  let filterRow=document.getElementById("onayFilter");
+  let cols=["Onay No","Tarih","Plaka","Firma","Km","Servis","Durum","Açıklama","Tutar","Fatura No","Fatura Tutarı","Fark","Yansıtma","Fatura Görseli","İşlemler"];
+  filterRow.innerHTML="";
+  cols.forEach(c=>{
+    let td=document.createElement("td");
+    if(c!=="İşlemler"){td.innerHTML=`<input onkeyup="renderOnay()" placeholder="Filtre...">`;}
+    filterRow.appendChild(td);
+  });
+}
+initOnayFilters();renderOnay();
+
+/* === PDF'ten Resim Alma === */
+async function pdfToImage(file){
+  const pdfData = new Uint8Array(await file.arrayBuffer());
+  const pdf = await pdfjsLib.getDocument({data: pdfData}).promise;
+  const page = await pdf.getPage(1);
+  const viewport = page.getViewport({scale: 2});
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await page.render({canvasContext: ctx, viewport: viewport}).promise;
+  return canvas;
+}
+
+/* === OCR ile Fatura Oku === */
+function uploadFatura(index){
+  let input=document.createElement("input");
+  input.type="file";
+  input.accept="image/*,.pdf";
+  input.onchange=async e=>{
+    let file=e.target.files[0];
+    if(!file) return;
+
+    let imageForOCR;
+    let imageUrl;
+
+    if(file.type==="application/pdf"){
+      const canvas=await pdfToImage(file);
+      imageForOCR=canvas;
+      imageUrl=canvas.toDataURL("image/png");
+    } else {
+      imageForOCR=file;
+      imageUrl=URL.createObjectURL(file);
+    }
+
+    Tesseract.recognize(imageForOCR,'tur').then(({data:{text}})=>{
+      console.log("OCR Çıktısı:",text);
+
+      // --- Fatura No ---
+      let faturaNoMatch = text.match(/[A-Z0-9]{16}/);
+      let faturaNo = faturaNoMatch ? faturaNoMatch[0] : "";
+
+      // --- Fatura Tutarı: son sayıyı al ---
+      let faturaTutar = 0;
+      let sayilar = text.match(/[0-9]{1,3}(?:[.\s][0-9]{3})*,[0-9]{2}/g);
+      if(sayilar && sayilar.length){
+        let sonSayi = sayilar[sayilar.length-1];
+        faturaTutar = parseFloat(
+          sonSayi.replace(/\./g,"").replace(/\s/g,"").replace(",",".")
+        );
+      }
+
+      // Kaydı güncelle
+      onayRecords[index].faturaNo=faturaNo;
+      onayRecords[index].faturaTutar=faturaTutar;
+      onayRecords[index].faturaImage=imageUrl;
+      save("onayRecords",onayRecords);
+      renderOnay();
+
+      alert("Fatura işlendi ✅\nFatura No: "+faturaNo+"\nTutar: "+faturaTutar+" TL");
     });
+  };
+  input.click();
+}
+
+/* === Fatura Sil === */
+function deleteFatura(index){
+  if(confirm("Bu kaydın faturasını silmek istediğinize emin misiniz?")){
+    onayRecords[index].faturaNo="";
+    onayRecords[index].faturaTutar=0;
+    onayRecords[index].faturaImage="";
+    save("onayRecords",onayRecords);
+    renderOnay();
   }
 }
 </script>
+<!-- İKAME -->
+<div id="ikame" class="page">
+  <h2>İKAME ARAÇ</h2>
+  <form id="ikameForm">
+    Müşteri Plakası: <input list="plakaList" name="musteriPlaka" onchange="autoFillFirmaIkame(this.value)" required>
+    Firma: <input type="text" name="firma" readonly>
+    İkame Araç Plakası: <input type="text" name="ikamePlaka" required>
+    Km: <input type="number" name="km" required>
+    Teslim Tarihi: <input type="date" name="teslimTarih" required>
+    <button type="submit">Kaydet</button>
+  </form>
+  <table id="ikameTable">
+    <thead>
+      <tr>
+        <th>Müşteri Plakası</th><th>Firma</th><th>İkame Araç</th><th>Km</th><th>Teslim Tarihi</th>
+        <th>Dönüş Km</th><th>Dönüş Tarihi</th><th>Form</th><th>İşlem</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- TESLİM -->
+<div id="teslim" class="page">
+  <h2>ARAÇ TESLİM</h2>
+  <form id="teslimForm">
+    Teslim Tarihi: <input type="date" name="teslimTarih" required>
+    Plaka: <input type="text" name="plaka" required>
+    Model: <input type="text" name="model" required>
+    Firma: <input type="text" name="firma" required>
+    Teslim Alan Kişi: <input type="text" name="kisi" required>
+    İrtibat No: <input type="text" name="irtibat" required>
+    <button type="submit">Kaydet</button>
+  </form>
+  <label><input type="checkbox" id="showPassive" onchange="togglePassive()"> Pasifleri Göster</label>
+  <table id="teslimTable">
+    <thead>
+      <tr>
+        <th>Tarih</th><th>Plaka</th><th>Model</th><th>Firma</th><th>Kişi</th><th>İrtibat</th><th>Durum</th><th>İşlem</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- BİLGİ -->
+<div id="bilgi" class="page">
+  <h2>ARAÇ / FİRMA BİLGİLERİ</h2>
+  <form id="bilgiForm">
+    Plaka: <input type="text" name="plaka" required>
+    Firma: <input type="text" name="firma" required>
+    Model: <input type="text" name="model">
+    Not: <input type="text" name="not">
+    <button type="submit">Ekle</button>
+  </form>
+  <div id="dropZone">Excel (.xlsx) veya CSV dosyanızı buraya sürükleyin</div>
+  <table id="bilgiTable">
+    <thead><tr id="bilgiHeader"></tr></thead>
+    <tbody></tbody>
+  </table>
+  <div id="bilgiPagination"></div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="admin" class="page">
+  <h2>👑 Admin Kullanıcı Yönetimi</h2>
+  <form onsubmit="addUser(event)">
+    <input type="text" id="newUser" placeholder="Kullanıcı Adı" required>
+    <input type="password" id="newPass" placeholder="Şifre" required>
+    <button type="submit">Kullanıcı Ekle</button>
+  </form>
+  <h3>Mevcut Kullanıcılar</h3>
+  <table id="userTable">
+    <thead><tr><th>Kullanıcı Adı</th><th>İşlem</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- YETKİ AYARLARI -->
+<div id="roles" class="page">
+  <h2>⚙️ Kullanıcı Bazlı Yetki Ayarları</h2>
+  <div id="userPerms"></div>
+  <button onclick="saveUserPermissions()">Kaydet</button>
+</div>
+
+<!-- ŞİFRE DEĞİŞTİR -->
+<div id="profile" class="page">
+  <h2>🔑 Şifre Değiştir</h2>
+  <form onsubmit="changePassword(event)">
+    <input type="password" id="oldPass" placeholder="Eski Şifre" required>
+    <input type="password" id="newPass1" placeholder="Yeni Şifre" required>
+    <input type="password" id="newPass2" placeholder="Yeni Şifre (Tekrar)" required>
+    <button type="submit">Güncelle</button>
+  </form>
+  <p id="passMsg" style="color:green; display:none;"></p>
+</div>
+</div> <!-- mainPage bitiş -->
+
+<datalist id="plakaList"></datalist>
+<script>
+/* === OTOMATİK FİRMA DOLDURMA === */
+function autoFillFirmaOnay(plaka) {
+  let rec = bilgiRecords.find(r => r["PLAKA"] === plaka.toUpperCase());
+  document.querySelector('#onayForm input[name="firma"]').value = rec ? rec["FİRMA"] : "";
+}
+function autoFillFirmaIkame(plaka) {
+  let rec = bilgiRecords.find(r => r["PLAKA"] === plaka.toUpperCase());
+  document.querySelector('#ikameForm input[name="firma"]').value = rec ? rec["FİRMA"] : "";
+}
+
+/* === İKAME === */
+let ikameRecords=load("ikameRecords");
+document.getElementById("ikameForm").onsubmit=e=>{
+  e.preventDefault();
+  let f=new FormData(e.target);
+  let rec={musteriPlaka:f.get("musteriPlaka").toUpperCase(),firma:f.get("firma").toUpperCase(),ikamePlaka:f.get("ikamePlaka").toUpperCase(),km:f.get("km"),teslim:f.get("teslimTarih"),donusKm:"",donusTarih:"",formFile:""};
+  ikameRecords.push(rec);save("ikameRecords",ikameRecords);renderIkame();e.target.reset();
+};
+function renderIkame(){
+  let tb=document.querySelector("#ikameTable tbody");tb.innerHTML="";
+  ikameRecords.forEach((r,i)=>{
+    let tr=document.createElement("tr");tr.className=r.donusTarih?"passive":"";
+    tr.innerHTML=`<td>${r.musteriPlaka}</td><td>${r.firma}</td><td>${r.ikamePlaka}</td><td>${r.km}</td><td>${r.teslim}</td><td>${r.donusKm||""}</td><td>${r.donusTarih||""}</td><td>${r.formFile?`<a href="${r.formFile}" target="_blank">Görüntüle</a>`:"Yok"}</td><td><button class='edit-btn' onclick="editIkame(${i})">Düzenle</button>${r.donusTarih?"":`<button class='edit-btn' onclick="iadeAl(${i})">İade Al</button>`}<button class='edit-btn' onclick="uploadForm(${i})">Form Yükle</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+function editIkame(i){let r=ikameRecords[i];r.musteriPlaka=prompt("Müşteri Plakası:",r.musteriPlaka)||r.musteriPlaka;r.firma=prompt("Firma:",r.firma)||r.firma;r.ikamePlaka=prompt("İkame Araç:",r.ikamePlaka)||r.ikamePlaka;r.km=prompt("Km:",r.km)||r.km;r.teslim=prompt("Teslim Tarihi:",r.teslim)||r.teslim;save("ikameRecords",ikameRecords);renderIkame();}
+function iadeAl(i){let r=ikameRecords[i];r.donusKm=prompt("Dönüş KM:",r.donusKm)||r.donusKm;r.donusTarih=prompt("Dönüş Tarihi:",r.donusTarih)||r.donusTarih;save("ikameRecords",ikameRecords);renderIkame();}
+function uploadForm(i){let input=document.createElement("input");input.type="file";input.accept=".pdf,image/*";input.onchange=e=>{let file=e.target.files[0];if(file){let reader=new FileReader();reader.onload=ev=>{ikameRecords[i].formFile=ev.target.result;save("ikameRecords",ikameRecords);renderIkame();};reader.readAsDataURL(file);}};input.click();}
+renderIkame();
+
+/* === TESLİM === */
+let teslimRecords=load("teslimRecords");
+document.getElementById("teslimForm").onsubmit=e=>{
+  e.preventDefault();
+  let f=new FormData(e.target);
+  let rec={tarih:f.get("teslimTarih"),plaka:f.get("plaka").toUpperCase(),model:f.get("model").toUpperCase(),firma:f.get("firma").toUpperCase(),kisi:f.get("kisi").toUpperCase(),irtibat:f.get("irtibat"),durum:"Aktif"};
+  teslimRecords.push(rec);save("teslimRecords",teslimRecords);renderTeslim();e.target.reset();
+};
+function renderTeslim(){
+  let tb=document.querySelector("#teslimTable tbody");
+  tb.innerHTML="";
+  teslimRecords.forEach((r,i)=>{
+    let tr=document.createElement("tr");
+    tr.className=r.durum==="Pasif"?"passive":""; 
+    tr.innerHTML=`
+      <td>${r.tarih}</td><td>${r.plaka}</td><td>${r.model}</td>
+      <td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td>
+      <td>${r.durum}</td>
+      <td>
+        ${r.durum==="Aktif" ? `<button onclick='teslimEt(${i})'>Teslim Et</button>` : ""}
+        <button class='edit-btn' onclick='editTeslim(${i})'>Düzenle</button>
+      </td>`;
+    tb.appendChild(tr);
+  });
+  togglePassive();
+}
+function teslimEt(i){teslimRecords[i].durum="Pasif";save("teslimRecords",teslimRecords);renderTeslim();}
+function togglePassive(){let show=document.getElementById("showPassive").checked;document.querySelectorAll("#teslimTable .passive").forEach(r=>r.style.display=show?"":"none");}
+function editTeslim(i){let r=teslimRecords[i];r.plaka=prompt("Plaka:",r.plaka)||r.plaka;r.model=prompt("Model:",r.model)||r.model;r.firma=prompt("Firma:",r.firma)||r.firma;save("teslimRecords",teslimRecords);renderTeslim();}
+renderTeslim();
+
+/* === BİLGİ === */
+let bilgiRecords=load("bilgiRecords");
+let bilgiPage=1, bilgiPerPage=25;
+document.getElementById("bilgiForm").onsubmit=e=>{
+  e.preventDefault();
+  let f=new FormData(e.target);
+  let rec={PLAKA:f.get("plaka").toUpperCase(),FİRMA:f.get("firma").toUpperCase(),MODEL:(f.get("model")||"").toUpperCase(),NOT:(f.get("not")||"").toUpperCase()};
+  bilgiRecords.push(rec);save("bilgiRecords",bilgiRecords);renderBilgi();updateDropdowns();e.target.reset();
+};
+function renderBilgi(){
+  let headerRow=document.getElementById("bilgiHeader");
+  let tb=document.querySelector("#bilgiTable tbody");
+  tb.innerHTML="";headerRow.innerHTML="";
+  if(bilgiRecords.length===0)return;
+  let headers=Object.keys(bilgiRecords[0]);headers.push("İŞLEM");
+  headers.forEach(h=>{let th=document.createElement("th");th.innerText=h;headerRow.appendChild(th);});
+  let totalPages=Math.ceil(bilgiRecords.length/bilgiPerPage);if(bilgiPage>totalPages)bilgiPage=1;
+  let start=(bilgiPage-1)*bilgiPerPage;let pageRecords=bilgiRecords.slice(start,start+bilgiPerPage);
+  pageRecords.forEach((r,i)=>{let tr=document.createElement("tr");Object.values(r).forEach(v=>{let td=document.createElement("td");td.innerText=v;tr.appendChild(td);});let td=document.createElement("td");td.innerHTML=`<button class="edit-btn" onclick="editBilgi(${start+i})">Düzenle</button><button class="edit-btn" onclick="deleteBilgi(${start+i})">Sil</button>`;tr.appendChild(td);tb.appendChild(tr);});
+  let pag=document.getElementById("bilgiPagination");pag.innerHTML="";for(let p=1;p<=totalPages;p++){let btn=document.createElement("button");btn.textContent=p;btn.disabled=(p===bilgiPage);btn.onclick=()=>{bilgiPage=p;renderBilgi();};pag.appendChild(btn);}
+}
+function editBilgi(i){let r=bilgiRecords[i];r.PLAKA=prompt("Plaka:",r.PLAKA)||r.PLAKA;r.FİRMA=prompt("Firma:",r.FİRMA)||r.FİRMA;r.MODEL=prompt("Model:",r.MODEL)||r.MODEL;r.NOT=prompt("Not:",r.NOT)||r.NOT;save("bilgiRecords",bilgiRecords);renderBilgi();}
+function deleteBilgi(i){if(confirm("Bu kaydı silmek istediğinize emin misiniz?")){bilgiRecords.splice(i,1);save("bilgiRecords",bilgiRecords);renderBilgi();updateDropdowns();}}
+function updateDropdowns(){let plakalar=[...new Set(bilgiRecords.map(r=>r["PLAKA"]).filter(Boolean))];document.getElementById("plakaList").innerHTML=plakalar.map(p=>`<option value="${p}">`).join("");}
+
+/* Excel Yükleme */
+let dropZone=document.getElementById("dropZone");
+dropZone.addEventListener("dragover",e=>{e.preventDefault();dropZone.classList.add("dragover");});
+dropZone.addEventListener("dragleave",()=>dropZone.classList.remove("dragover"));
+dropZone.addEventListener("drop",e=>{
+  e.preventDefault();dropZone.classList.remove("dragover");
+  let file=e.dataTransfer.files[0];if(!file)return;
+  let reader=new FileReader();
+  if(file.name.endsWith(".xlsx")){
+    reader.onload=function(evt){let data=new Uint8Array(evt.target.result);let wb=XLSX.read(data,{type:'array'});let sheet=wb.Sheets[wb.SheetNames[0]];let json=XLSX.utils.sheet_to_json(sheet,{header:1, raw:false});let headers=json[0].map(h=>h.trim().toUpperCase());bilgiRecords=json.slice(1).filter(r=>r.length>0).map(r=>{let obj={};headers.forEach((h,i)=>{obj[h]=(r[i]||"").toUpperCase();});return obj;});save("bilgiRecords",bilgiRecords);renderBilgi();updateDropdowns();};
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.onload=function(evt){let lines=evt.target.result.split(/\r?\n/).map(l=>l.split(/;|,/));let headers=lines[0].map(h=>h.trim().toUpperCase());bilgiRecords=lines.slice(1).filter(r=>r.length>1).map(r=>{let obj={};headers.forEach((h,i)=>obj[h]=(r[i]||"").toUpperCase());return obj;});save("bilgiRecords",bilgiRecords);renderBilgi();updateDropdowns();};
+    reader.readAsText(file);
+  }
+});
+renderBilgi();
+
+/* === ADMIN === */
+if(!localStorage.getItem("users")){
+  localStorage.setItem("users", JSON.stringify([{username:"admin", password:"1234"}]));
+}
+if(!localStorage.getItem("permissionsByUser")){
+  localStorage.setItem("permissionsByUser", JSON.stringify({admin:["onay","ikame","teslim","bilgi","admin","roles","profile"]}));
+}
+
+function login(){
+  let u=document.getElementById("username").value.trim();
+  let p=document.getElementById("password").value.trim();
+  let users=JSON.parse(localStorage.getItem("users")||"[]");
+  let found=users.find(x=>x.username===u && x.password===p);
+  if(found){
+    localStorage.setItem("loggedInUser", JSON.stringify(found));
+    document.getElementById("loginPage").style.display="none";
+    document.getElementById("mainPage").style.display="block";
+    document.getElementById("currentUser").innerText="👤 "+found.username;
+    applyPermissions(u);
+    renderUsers();renderUserPermissions();renderOnay();
+  }else{
+    document.getElementById("loginError").style.display="block";
+  }
+}
+function logout(){
+  localStorage.removeItem("loggedInUser");
+  document.getElementById("mainPage").style.display="none";
+  document.getElementById("loginPage").style.display="flex";
+  document.getElementById("currentUser").innerText="";
+}
+function addUser(e){
+  e.preventDefault();
+  let u=document.getElementById("newUser").value.trim();
+  let p=document.getElementById("newPass").value.trim();
+  let users=JSON.parse(localStorage.getItem("users")||"[]");
+  if(users.find(x=>x.username===u)){ alert("Bu kullanıcı zaten var!"); return; }
+  users.push({username:u, password:p});
+  localStorage.setItem("users", JSON.stringify(users));
+  let perms=JSON.parse(localStorage.getItem("permissionsByUser"));
+  perms[u]=["teslim","bilgi","profile"];
+  localStorage.setItem("permissionsByUser", JSON.stringify(perms));
+  renderUsers();renderUserPermissions();e.target.reset();
+}
+function renderUsers(){
+  let users=JSON.parse(localStorage.getItem("users")||"[]");
+  let tb=document.querySelector("#userTable tbody");
+  tb.innerHTML="";
+  users.forEach((u,i)=>{
+    let tr=document.createElement("tr");
+    tr.innerHTML=`<td>${u.username}</td><td>${u.username==="admin"?"👑 Admin":"<button class='edit-btn' onclick='deleteUser("+i+")'>Sil</button>"}</td>`;
+    tb.appendChild(tr);
+  });
+}
+function deleteUser(i){
+  let users=JSON.parse(localStorage.getItem("users")||"[]");
+  if(users[i].username==="admin"){ alert("Admin silinemez!"); return; }
+  if(confirm("Kullanıcı silinsin mi?")){
+    let uname=users[i].username;
+    users.splice(i,1);
+    localStorage.setItem("users", JSON.stringify(users));
+    let perms=JSON.parse(localStorage.getItem("permissionsByUser"));
+    delete perms[uname];
+    localStorage.setItem("permissionsByUser", JSON.stringify(perms));
+    renderUsers();renderUserPermissions();
+  }
+}
+function renderUserPermissions(){
+  let users=JSON.parse(localStorage.getItem("users")||"[]");
+  let perms=JSON.parse(localStorage.getItem("permissionsByUser"));
+  let allPages=["onay","ikame","teslim","bilgi","admin","roles","profile"];
+  let div=document.getElementById("userPerms");
+  div.innerHTML="";
+  users.forEach(u=>{
+    let box=document.createElement("div");
+    box.innerHTML=`<h3>${u.username}</h3>`;
+    allPages.forEach(pg=>{
+      let chk=document.createElement("input");
+      chk.type="checkbox";chk.value=pg;
+      chk.checked=(perms[u.username]||[]).includes(pg);
+      chk.id=u.username+"_"+pg;
+      box.appendChild(chk);
+      let lbl=document.createElement("label");lbl.htmlFor=chk.id;lbl.innerText=" "+pg;box.appendChild(lbl);
+      box.appendChild(document.createElement("br"));
+    });
+    div.appendChild(box);
+  });
+}
+function saveUserPermissions(){
+  let perms={};
+  let users=JSON.parse(localStorage.getItem("users")||"[]");
+  let allPages=["onay","ikame","teslim","bilgi","admin","roles","profile"];
+  users.forEach(u=>{
+    perms[u.username]=allPages.filter(pg=>document.getElementById(u.username+"_"+pg)?.checked);
+  });
+  localStorage.setItem("permissionsByUser", JSON.stringify(perms));
+  alert("Yetkiler güncellendi ✅");
+}
+function changePassword(e){
+  e.preventDefault();
+  let oldP=document.getElementById("oldPass").value.trim();
+  let new1=document.getElementById("newPass1").value.trim();
+  let new2=document.getElementById("newPass2").value.trim();
+  let user=JSON.parse(localStorage.getItem("loggedInUser"));
+  let users=JSON.parse(localStorage.getItem("users")||"[]");
+  let found=users.find(x=>x.username===user.username);
+  if(found.password!==oldP){ alert("Eski şifre yanlış!"); return; }
+  if(new1!==new2){ alert("Yeni şifreler uyuşmuyor!"); return; }
+  found.password=new1;
+  localStorage.setItem("users", JSON.stringify(users));
+  localStorage.setItem("loggedInUser", JSON.stringify(found));
+  document.getElementById("passMsg").innerText="Şifre başarıyla güncellendi ✅";
+  document.getElementById("passMsg").style.display="block";
+  e.target.reset();
+}
+function applyPermissions(username){
+  let perms=JSON.parse(localStorage.getItem("permissionsByUser"));
+  let allowed=perms[username] || [];
+  document.querySelectorAll(".menu button").forEach(btn=>{
+    let page=btn.dataset.page;
+    btn.style.display=allowed.includes(page)?"inline-block":"none";
+  });
+}
+window.onload=function(){
+  let u=localStorage.getItem("loggedInUser");
+  if(u){
+    let user=JSON.parse(u);
+    document.getElementById("loginPage").style.display="none";
+    document.getElementById("mainPage").style.display="block";
+    document.getElementById("currentUser").innerText="👤 "+user.username;
+    applyPermissions(user.username);
+    renderUsers();renderUserPermissions();renderOnay();
+  }
+}
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.style.display='none');
+  document.getElementById(id).style.display='block';
+}
+</script>
+</body>
+</html>

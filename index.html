@@ -9,7 +9,6 @@
     header h1 { margin:0; font-size:20px; }
     .container { padding:20px; }
 
-    /* Login Sayfası Ortada */
     #authSection {
       display:flex; flex-direction:column; align-items:center; justify-content:center;
       height:100vh;
@@ -28,10 +27,17 @@
     }
     .login-box button:hover { background:#004f2a; }
 
-    table { width:100%; border-collapse:collapse; margin-top:20px; }
+    table { width:100%; border-collapse:collapse; margin-top:20px; font-size:14px; }
     th,td { border:1px solid #ccc; padding:6px; text-align:center; }
     th { background:#006f3c; color:white; }
     .logout { background:#900; color:white; padding:5px 10px; border:none; cursor:pointer; }
+    .passive { background:#eee; color:#666; }
+    .edit-btn { background:orange; color:white; padding:3px 8px; border:none; border-radius:3px; cursor:pointer; margin:2px; }
+    .delete-btn { background:red; color:white; padding:3px 8px; border:none; border-radius:3px; cursor:pointer; margin:2px; }
+    .restore-btn { background:#006f3c; color:white; padding:3px 8px; border:none; border-radius:3px; cursor:pointer; margin:2px; }
+    .export-btn { background:#006f3c; color:white; padding:6px 12px; border:none; border-radius:5px; cursor:pointer; margin-top:10px; }
+    .export-btn:hover { background:#004f2a; }
+    .filter-row input { width:90%; padding:4px; font-size:12px; }
   </style>
 </head>
 <body>
@@ -69,104 +75,220 @@
     <button type="submit">Kaydet</button>
   </form>
 
-  <table>
+  <label><input type="checkbox" id="showPassive"> Pasifleri Göster</label>
+  <button class="export-btn" onclick="exportExcel()">Excel'e Aktar</button>
+  <button class="export-btn" onclick="toggleDeleted()">🗑 Silinenleri Görüntüle</button>
+
+  <table id="teslimTable">
     <thead>
       <tr>
-        <th>Tarih</th><th>Plaka</th><th>Model</th><th>Firma</th><th>Kişi</th><th>İrtibat</th><th>Durum</th><th>İşlem</th>
+        <th>Tarih</th><th>Plaka</th><th>Model</th><th>Firma</th>
+        <th>Kişi</th><th>İrtibat</th><th>Durum</th><th>Kullanıcı</th><th>İşlem</th>
+      </tr>
+      <tr class="filter-row">
+        <td><input onkeyup="applyFilters()" data-col="0"></td>
+        <td><input onkeyup="applyFilters()" data-col="1"></td>
+        <td><input onkeyup="applyFilters()" data-col="2"></td>
+        <td><input onkeyup="applyFilters()" data-col="3"></td>
+        <td><input onkeyup="applyFilters()" data-col="4"></td>
+        <td><input onkeyup="applyFilters()" data-col="5"></td>
+        <td><input onkeyup="applyFilters()" data-col="6"></td>
+        <td><input onkeyup="applyFilters()" data-col="7"></td>
+        <td></td>
       </tr>
     </thead>
-    <tbody id="teslimTable"></tbody>
+    <tbody></tbody>
   </table>
 </div>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+<!-- Firebase v10 modüler -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, collection, addDoc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, doc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-<script>
-/* === Firebase Config === */
-const firebaseConfig = {
-  apiKey: "SENİN_API_KEYİN",
-  authDomain: "SENIN_PROJEN.firebaseapp.com",
-  projectId: "SENIN_PROJEN",
-  storageBucket: "SENIN_PROJEN.appspot.com",
-  messagingSenderId: "XXXXXXXX",
-  appId: "XXXXXXXX"
-};
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
-
-/* === Auth === */
-function register(){
-  let email=document.getElementById("email").value;
-  let pass=document.getElementById("password").value;
-  auth.createUserWithEmailAndPassword(email,pass)
-    .catch(err=>document.getElementById("authError").innerText=err.message);
-}
-function login(){
-  let email=document.getElementById("email").value;
-  let pass=document.getElementById("password").value;
-  auth.signInWithEmailAndPassword(email,pass)
-    .catch(err=>document.getElementById("authError").innerText=err.message);
-}
-function logout(){ auth.signOut(); }
-
-auth.onAuthStateChanged(user=>{
-  if(user){
-    document.getElementById("authSection").style.display="none";
-    document.getElementById("mainSection").style.display="block";
-    document.getElementById("mainHeader").style.display="flex";
-    document.getElementById("currentUser").innerText="👤 "+user.email;
-    loadTeslim();
-  }else{
-    document.getElementById("authSection").style.display="flex";
-    document.getElementById("mainSection").style.display="none";
-    document.getElementById("mainHeader").style.display="none";
-    document.getElementById("currentUser").innerText="";
-  }
-});
-
-/* === Araç Teslim === */
-document.getElementById("teslimForm").onsubmit=e=>{
-  e.preventDefault();
-  let f=new FormData(e.target);
-  let rec={
-    tarih:f.get("tarih"),
-    plaka:f.get("plaka").toUpperCase(),
-    model:f.get("model").toUpperCase(),
-    firma:f.get("firma").toUpperCase(),
-    kisi:f.get("kisi").toUpperCase(),
-    irtibat:f.get("irtibat"),
-    durum:"Aktif",
-    createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  /* === Firebase Config === */
+  const firebaseConfig = {
+    apiKey: "AIzaSyB-xEmeTVN8oiB4FZzV4UpJpAHkyDHYF4U",
+    authDomain: "sekar-filo.firebaseapp.com",
+    projectId: "sekar-filo",
+    storageBucket: "sekar-filo.firebasestorage.app",
+    messagingSenderId: "61274893830",
+    appId: "1:61274893830:web:c9dfdf8baf0500178f9d87"
   };
-  db.collection("teslim").add(rec).then(()=>{ e.target.reset(); });
-};
 
-/* === Tablo Render === */
-function loadTeslim(){
-  db.collection("teslim").orderBy("createdAt","desc").onSnapshot(snap=>{
-    let tb=document.getElementById("teslimTable");
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  let currentUserEmail="";
+  let allRecords=[];
+  let deletedMode=false;
+
+  /* === Auth === */
+  window.register = async function(){
+    let email=document.getElementById("email").value;
+    let pass=document.getElementById("password").value;
+    try{ await createUserWithEmailAndPassword(auth,email,pass); }
+    catch(err){ document.getElementById("authError").innerText=err.message; }
+  }
+
+  window.login = async function(){
+    let email=document.getElementById("email").value;
+    let pass=document.getElementById("password").value;
+    try{ await signInWithEmailAndPassword(auth,email,pass); }
+    catch(err){ document.getElementById("authError").innerText=err.message; }
+  }
+
+  window.logout = function(){ signOut(auth); }
+
+  onAuthStateChanged(auth, user=>{
+    if(user){
+      currentUserEmail=user.email;
+      document.getElementById("authSection").style.display="none";
+      document.getElementById("mainSection").style.display="block";
+      document.getElementById("mainHeader").style.display="flex";
+      document.getElementById("currentUser").innerText="👤 "+user.email;
+      loadTeslim();
+    }else{
+      currentUserEmail="";
+      document.getElementById("authSection").style.display="flex";
+      document.getElementById("mainSection").style.display="none";
+      document.getElementById("mainHeader").style.display="none";
+      document.getElementById("currentUser").innerText="";
+    }
+  });
+
+  /* === Araç Teslim === */
+  document.getElementById("teslimForm").onsubmit=async e=>{
+    e.preventDefault();
+    let f=new FormData(e.target);
+    let rec={
+      tarih:f.get("tarih"),
+      plaka:f.get("plaka").toUpperCase(),
+      model:f.get("model").toUpperCase(),
+      firma:f.get("firma").toUpperCase(),
+      kisi:f.get("kisi").toUpperCase(),
+      irtibat:f.get("irtibat"),
+      durum:"Aktif",
+      createdBy:currentUserEmail,
+      createdAt:serverTimestamp()
+    };
+    await addDoc(collection(db,"teslim"),rec);
+    e.target.reset();
+  };
+
+  function loadTeslim(){
+    const q=query(collection(db, deletedMode?"teslim_deleted":"teslim"),orderBy("createdAt","desc"));
+    onSnapshot(q,snap=>{
+      allRecords=[];
+      snap.forEach(d=>{
+        let r=d.data();
+        r.id=d.id;
+        allRecords.push(r);
+      });
+      renderTable();
+    });
+  }
+
+  function renderTable(){
+    let tb=document.querySelector("#teslimTable tbody");
     tb.innerHTML="";
-    snap.forEach(doc=>{
-      let r=doc.data();
+    let showPassive = document.getElementById("showPassive").checked;
+
+    let filters={};
+    document.querySelectorAll(".filter-row input").forEach(inp=>{
+      filters[inp.dataset.col]=inp.value.toLowerCase();
+    });
+
+    allRecords.forEach(r=>{
+      if(!deletedMode && r.durum==="Pasif" && !showPassive) return;
+
+      let values=[r.tarih,r.plaka,r.model,r.firma,r.kisi,r.irtibat,r.durum||"-",r.createdBy||"-"];
+      let visible=true;
+      values.forEach((val,i)=>{
+        if(filters[i] && !val.toString().toLowerCase().includes(filters[i])) visible=false;
+      });
+      if(!visible) return;
+
       let tr=document.createElement("tr");
+      tr.className = (r.durum==="Pasif") ? "passive" : "";
+
+      let actionBtns="";
+      if(!deletedMode){
+        if(r.durum==="Aktif"){
+          actionBtns+=`<button onclick="markTeslim('${r.id}')">Teslim Et</button>
+                       <button class="edit-btn" onclick="editTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Düzenle</button>`;
+        }
+        if(currentUserEmail==="admin@sekarfilo.com"){
+          actionBtns+=`<button class="delete-btn" onclick="deleteTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Sil</button>`;
+        }
+      } else {
+        if(currentUserEmail==="admin@sekarfilo.com"){
+          actionBtns+=`<button class="restore-btn" onclick="restoreTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`;
+        }
+      }
+
       tr.innerHTML=`
         <td>${r.tarih}</td><td>${r.plaka}</td><td>${r.model}</td>
         <td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td>
-        <td>${r.durum}</td>
-        <td>
-          ${r.durum==="Aktif" ? `<button onclick="markTeslim('${doc.id}')">Teslim Et</button>` : ""}
-        </td>`;
+        <td>${r.durum||"-"}</td><td>${r.createdBy||"-"}</td>
+        <td>${actionBtns}</td>`;
       tb.appendChild(tr);
     });
-  });
-}
-function markTeslim(id){
-  db.collection("teslim").doc(id).update({durum:"Pasif"});
-}
+  }
+
+  window.applyFilters=function(){ renderTable(); }
+
+  window.markTeslim=async function(id){
+    await updateDoc(doc(db,"teslim",id),{durum:"Pasif"});
+  }
+
+  window.editTeslim=async function(id, r){
+    let tarih=prompt("Tarih:", r.tarih)||r.tarih;
+    let plaka=prompt("Plaka:", r.plaka)||r.plaka;
+    let model=prompt("Model:", r.model)||r.model;
+    let firma=prompt("Firma:", r.firma)||r.firma;
+    let kisi=prompt("Kişi:", r.kisi)||r.kisi;
+    let irtibat=prompt("İrtibat:", r.irtibat)||r.irtibat;
+    await updateDoc(doc(db,"teslim",id),{
+      tarih,plaka:plaka.toUpperCase(),model:model.toUpperCase(),
+      firma:firma.toUpperCase(),kisi:kisi.toUpperCase(),irtibat
+    });
+  }
+
+  window.deleteTeslim=async function(id, r){
+    if(confirm("Bu kaydı silmek istediğinize emin misiniz?")){
+      await setDoc(doc(db,"teslim_deleted",id),{...r,deletedAt:serverTimestamp()});
+      await deleteDoc(doc(db,"teslim",id));
+    }
+  }
+
+  window.restoreTeslim=async function(id, r){
+    await setDoc(doc(db,"teslim",id),{...r,restoredAt:serverTimestamp()});
+    await deleteDoc(doc(db,"teslim_deleted",id));
+  }
+
+  window.toggleDeleted=function(){
+    deletedMode=!deletedMode;
+    loadTeslim();
+  }
+
+  document.getElementById("showPassive").addEventListener("change", renderTable);
+
+  window.exportExcel=function(){
+    let rows=[["Tarih","Plaka","Model","Firma","Kişi","İrtibat","Durum","Kullanıcı"]];
+    document.querySelectorAll("#teslimTable tbody tr").forEach(tr=>{
+      let cols=Array.from(tr.querySelectorAll("td")).slice(0,8).map(td=>td.innerText);
+      rows.push(cols);
+    });
+    let csv=rows.map(r=>r.join(";")).join("\n");
+    let blob=new Blob([csv],{type:"text/csv"});
+    let link=document.createElement("a");
+    link.href=URL.createObjectURL(blob);
+    link.download=deletedMode?"Silinenler.csv":"TeslimRaporu.csv";
+    link.click();
+  }
 </script>
 </body>
 </html>

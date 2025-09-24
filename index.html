@@ -27,6 +27,14 @@
     .export-btn:hover { background:#004f2a; }
     .filter-row input { width:90%; padding:4px; font-size:12px; }
     #userList { margin-top:40px; }
+
+    /* Modal */
+    .modal { display:none; position:fixed; z-index:999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; }
+    .modal-content { background:#fff; padding:20px; border-radius:10px; width:300px; position:relative; }
+    .close-btn { position:absolute; top:10px; right:15px; font-size:20px; cursor:pointer; }
+    .modal-content label { display:block; margin-top:10px; font-size:13px; text-align:left; }
+    .modal-content input { width:100%; padding:6px; margin-top:4px; border:1px solid #ccc; border-radius:5px; }
+    .save-btn { margin-top:15px; background:#006f3c; color:white; border:none; padding:8px; width:100%; border-radius:5px; cursor:pointer; }
   </style>
 </head>
 <body>
@@ -63,9 +71,16 @@
     <button type="submit">Kaydet</button>
   </form>
 
-  <label><input type="checkbox" id="showPassive"> Teslim Edilenleri Göster</label>
+  <label>Durum: 
+    <select id="statusFilter" onchange="renderTable()">
+      <option value="all">Hepsi</option>
+      <option value="bekliyor">Teslimat Bekliyor</option>
+      <option value="edildi">Teslim Edildi</option>
+    </select>
+  </label>
+
   <button class="export-btn" onclick="exportExcel()">Excel'e Aktar</button>
-  <button class="export-btn" onclick="toggleDeleted()">🗑 Silinenleri Görüntüle</button>
+  <button id="deletedBtn" class="export-btn" onclick="toggleDeleted()" style="display:none;">🗑 Silinenleri Görüntüle</button>
 
   <table id="teslimTable">
     <thead>
@@ -98,7 +113,32 @@
   </div>
 </div>
 
-<!-- Firebase -->
+<!-- Düzenleme Modalı -->
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" onclick="closeModal()">&times;</span>
+    <h2>🚗 Kayıt Düzenle</h2>
+    <form id="editForm">
+      <input type="hidden" id="editId">
+      <label>Tarih:</label>
+      <input type="date" id="editTarih" required>
+      <label>Plaka:</label>
+      <input type="text" id="editPlaka" required>
+      <label>Model:</label>
+      <input type="text" id="editModel" required>
+      <label>Firma:</label>
+      <input type="text" id="editFirma" required>
+      <label>Kişi:</label>
+      <input type="text" id="editKisi" required>
+      <label>İrtibat No:</label>
+      <input type="text" id="editIrtibat" required>
+      <button type="submit" class="save-btn">💾 Kaydet</button>
+    </form>
+  </div>
+</div>
+
+<!-- Firebase ve SheetJS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -143,6 +183,7 @@
       document.getElementById("currentUser").innerText="👤 "+user.email;
       if(user.email==="admin@sekarfilo.com"){ 
         document.getElementById("userList").style.display="block"; 
+        document.getElementById("deletedBtn").style.display="inline-block";
         loadUsers();
       }
     }else{
@@ -180,7 +221,7 @@
       firma:f.get("firma").toUpperCase(),
       kisi:f.get("kisi").toUpperCase(),
       irtibat:f.get("irtibat"),
-      durum:"Teslimat Bekliyor",
+      durum:"Teslimat Bekliyor", // normalize edildi
       createdBy:currentUserEmail,
       createdAt:serverTimestamp(),
       formUrl:""
@@ -198,14 +239,15 @@
         let r=d.data(); r.id=d.id;
         allRecords.push(r);
       });
-      renderTable();
+      window.renderTable();
     });
   }
 
-  function renderTable(){
+  /* === Render Table (Global) === */
+  window.renderTable = function(){
     let tb=document.querySelector("#teslimTable tbody");
     tb.innerHTML="";
-    let showPassive=document.getElementById("showPassive").checked;
+    let statusFilter=document.getElementById("statusFilter").value;
 
     let filters={};
     document.querySelectorAll(".filter-row input").forEach(inp=>{
@@ -213,25 +255,31 @@
     });
 
     allRecords.forEach(r=>{
-      // Tarih formatını dönüştür
       let formattedDate = r.tarih;
       if(r.tarih && r.tarih.includes("-")){
         let parts=r.tarih.split("-");
         formattedDate=`${parts[2]}.${parts[1]}.${parts[0].slice(2)}`;
       }
 
-      if(!deletedMode && r.durum==="Teslim Edildi" && !showPassive) return;
-      let values=[formattedDate,r.plaka,r.model,r.firma,r.kisi,r.irtibat,r.durum||"-",r.createdBy||"-"];
+      let durumDisplay = 
+        r.durum==="Aktif" ? "Teslimat Bekliyor" :
+        r.durum==="Pasif" ? "Teslim Edildi" :
+        r.durum;
+
+      if(statusFilter==="bekliyor" && durumDisplay!=="Teslimat Bekliyor") return;
+      if(statusFilter==="edildi" && durumDisplay!=="Teslim Edildi") return;
+
+      let values=[formattedDate,r.plaka,r.model,r.firma,r.kisi,r.irtibat,durumDisplay||"-",r.createdBy||"-"];
       let visible=values.every((val,i)=>!filters[i]||val.toString().toLowerCase().includes(filters[i]));
       if(!visible) return;
 
       let tr=document.createElement("tr");
-      tr.className=(r.durum==="Teslim Edildi" || r.durum==="Pasif")?"passive":"";
+      tr.className=(durumDisplay==="Teslim Edildi")?"passive":"";
       let actionBtns="";
       if(!deletedMode){
-        if(r.durum==="Teslimat Bekliyor" || r.durum==="Aktif"){
+        if(durumDisplay==="Teslimat Bekliyor"){
           actionBtns+=`<button onclick="markTeslim('${r.id}')">Teslim Et</button>
-                       <button class="edit-btn" onclick="editTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Düzenle</button>`;
+                       <button class="edit-btn" onclick='openModal(${JSON.stringify(r).replace(/"/g,"&quot;")})'>Düzenle</button>`;
         } else {
           actionBtns+=`<button class="edit-btn" onclick="uploadForm('${r.id}')">Form Yükle</button>`;
         }
@@ -245,12 +293,7 @@
       }
       tr.innerHTML=`<td>${formattedDate}</td><td>${r.plaka}</td><td>${r.model}</td>
         <td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td>
-        <td>${
-          r.durum==="Aktif" ? "Teslimat Bekliyor" :
-          r.durum==="Pasif" ? "Teslim Edildi" :
-          r.durum||"-"
-        }</td>
-        <td>${r.createdBy||"-"}</td>
+        <td>${durumDisplay}</td><td>${r.createdBy||"-"}</td>
         <td>
           ${r.formUrl ? `<a href="${r.formUrl}" target="_blank">📄 Formu Gör</a><br>` : ""}
           ${actionBtns}
@@ -259,23 +302,41 @@
     });
   }
 
-  window.applyFilters=function(){ renderTable(); }
+  window.applyFilters=function(){ window.renderTable(); }
   window.markTeslim=async id=>{ await updateDoc(doc(db,"teslim",id),{durum:"Teslim Edildi"}); }
-  window.editTeslim=async (id,r)=>{
-    let tarih=prompt("Tarih:", r.tarih)||r.tarih;
-    let plaka=prompt("Plaka:", r.plaka)||r.plaka;
-    let model=prompt("Model:", r.model)||r.model;
-    let firma=prompt("Firma:", r.firma)||r.firma;
-    let kisi=prompt("Kişi:", r.kisi)||r.kisi;
-    let irtibat=prompt("İrtibat:", r.irtibat)||r.irtibat;
-    await updateDoc(doc(db,"teslim",id),{tarih,plaka:plaka.toUpperCase(),model:model.toUpperCase(),firma:firma.toUpperCase(),kisi:kisi.toUpperCase(),irtibat});
-  }
   window.deleteTeslim=async (id,r)=>{ if(confirm("Silmek istiyor musun?")){ await setDoc(doc(db,"teslim_deleted",id),{...r,deletedAt:serverTimestamp()}); await deleteDoc(doc(db,"teslim",id)); } }
   window.restoreTeslim=async (id,r)=>{ await setDoc(doc(db,"teslim",id),{...r,restoredAt:serverTimestamp()}); await deleteDoc(doc(db,"teslim_deleted",id)); }
   window.toggleDeleted=function(){ deletedMode=!deletedMode; loadTeslim(); }
-  document.getElementById("showPassive").addEventListener("change", renderTable);
 
-  // ✅ Form yükleme fonksiyonu
+  /* === Modal Aç / Kapat === */
+  window.openModal=function(r){
+    document.getElementById("editId").value=r.id;
+    document.getElementById("editTarih").value=r.tarih;
+    document.getElementById("editPlaka").value=r.plaka;
+    document.getElementById("editModel").value=r.model;
+    document.getElementById("editFirma").value=r.firma;
+    document.getElementById("editKisi").value=r.kisi;
+    document.getElementById("editIrtibat").value=r.irtibat;
+    document.getElementById("editModal").style.display="flex";
+  }
+  window.closeModal=function(){ document.getElementById("editModal").style.display="none"; }
+
+  document.getElementById("editForm").onsubmit=async e=>{
+    e.preventDefault();
+    let id=document.getElementById("editId").value;
+    let data={
+      tarih:document.getElementById("editTarih").value,
+      plaka:document.getElementById("editPlaka").value.toUpperCase(),
+      model:document.getElementById("editModel").value.toUpperCase(),
+      firma:document.getElementById("editFirma").value.toUpperCase(),
+      kisi:document.getElementById("editKisi").value.toUpperCase(),
+      irtibat:document.getElementById("editIrtibat").value
+    };
+    await updateDoc(doc(db,"teslim",id),data);
+    closeModal();
+  }
+
+  /* === Form Yükleme === */
   window.uploadForm = async function(id){
     let input = document.createElement("input");
     input.type = "file";
@@ -296,21 +357,22 @@
     input.click();
   }
 
+  /* === Excel Export === */
   window.exportExcel=function(){
-    let rows=[["Tarih","Plaka","Model","Firma","Kişi","İrtibat","Durum","Kullanıcı"]];
+    let headers=["Tarih","Plaka","Model","Firma","Kişi","İrtibat","Durum","Kullanıcı"];
+    let rows=[];
     document.querySelectorAll("#teslimTable tbody tr").forEach(tr=>{
       let cols=Array.from(tr.querySelectorAll("td")).slice(0,8).map(td=>td.innerText);
       rows.push(cols);
     });
-    let csv=rows.map(r=>r.join(";")).join("\n");
-    let blob=new Blob([csv],{type:"text/csv"});
-    let link=document.createElement("a");
-    link.href=URL.createObjectURL(blob);
-    link.download=deletedMode?"Silinenler.csv":"TeslimRaporu.csv";
-    link.click();
+    let worksheet=XLSX.utils.aoa_to_sheet([headers,...rows]);
+    let workbook=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook,worksheet,"Teslim Raporu");
+    let fileName=deletedMode?"Silinenler.xlsx":"TeslimRaporu.xlsx";
+    XLSX.writeFile(workbook,fileName);
   }
 
-  // İlk yüklemede teslim kayıtlarını getir
+  /* === İlk Yükleme === */
   loadTeslim();
 </script>
 </body>

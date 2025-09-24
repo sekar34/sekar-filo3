@@ -63,7 +63,7 @@
     <button type="submit">Kaydet</button>
   </form>
 
-  <label><input type="checkbox" id="showPassive"> Pasifleri Göster</label>
+  <label><input type="checkbox" id="showPassive"> Teslim Edilenleri Göster</label>
   <button class="export-btn" onclick="exportExcel()">Excel'e Aktar</button>
   <button class="export-btn" onclick="toggleDeleted()">🗑 Silinenleri Görüntüle</button>
 
@@ -101,13 +101,9 @@
 <!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { 
-    getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged 
-  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { 
-    getFirestore, collection, addDoc, onSnapshot, orderBy, query, serverTimestamp, 
-    updateDoc, doc, deleteDoc, setDoc, getDoc 
-  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, collection, addDoc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, doc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyB-xEmeTVN8oiB4FZzV4UpJpAHkyDHYF4U",
@@ -121,6 +117,7 @@
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
+  const storage = getStorage(app);
 
   let currentUserEmail="";
   let allRecords=[];
@@ -140,12 +137,10 @@
   onAuthStateChanged(auth, async user=>{
     if(user){
       currentUserEmail=user.email;
-
       document.getElementById("authSection").style.display="none";
       document.getElementById("mainSection").style.display="block";
       document.getElementById("mainHeader").style.display="flex";
       document.getElementById("currentUser").innerText="👤 "+user.email;
-
       if(user.email==="admin@sekarfilo.com"){ 
         document.getElementById("userList").style.display="block"; 
         loadUsers();
@@ -185,9 +180,10 @@
       firma:f.get("firma").toUpperCase(),
       kisi:f.get("kisi").toUpperCase(),
       irtibat:f.get("irtibat"),
-      durum:"Aktif",
+      durum:"Teslimat Bekliyor",
       createdBy:currentUserEmail,
-      createdAt:serverTimestamp()
+      createdAt:serverTimestamp(),
+      formUrl:""
     };
     await addDoc(collection(db,"teslim"),rec);
     e.target.reset();
@@ -217,18 +213,27 @@
     });
 
     allRecords.forEach(r=>{
-      if(!deletedMode && r.durum==="Pasif" && !showPassive) return;
-      let values=[r.tarih,r.plaka,r.model,r.firma,r.kisi,r.irtibat,r.durum||"-",r.createdBy||"-"];
+      // Tarih formatını dönüştür
+      let formattedDate = r.tarih;
+      if(r.tarih && r.tarih.includes("-")){
+        let parts=r.tarih.split("-");
+        formattedDate=`${parts[2]}.${parts[1]}.${parts[0].slice(2)}`;
+      }
+
+      if(!deletedMode && r.durum==="Teslim Edildi" && !showPassive) return;
+      let values=[formattedDate,r.plaka,r.model,r.firma,r.kisi,r.irtibat,r.durum||"-",r.createdBy||"-"];
       let visible=values.every((val,i)=>!filters[i]||val.toString().toLowerCase().includes(filters[i]));
       if(!visible) return;
 
       let tr=document.createElement("tr");
-      tr.className=(r.durum==="Pasif")?"passive":"";
+      tr.className=(r.durum==="Teslim Edildi" || r.durum==="Pasif")?"passive":"";
       let actionBtns="";
       if(!deletedMode){
-        if(r.durum==="Aktif"){
+        if(r.durum==="Teslimat Bekliyor" || r.durum==="Aktif"){
           actionBtns+=`<button onclick="markTeslim('${r.id}')">Teslim Et</button>
                        <button class="edit-btn" onclick="editTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Düzenle</button>`;
+        } else {
+          actionBtns+=`<button class="edit-btn" onclick="uploadForm('${r.id}')">Form Yükle</button>`;
         }
         if(currentUserEmail==="admin@sekarfilo.com"){
           actionBtns+=`<button class="delete-btn" onclick="deleteTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Sil</button>`;
@@ -238,15 +243,24 @@
           actionBtns+=`<button class="restore-btn" onclick="restoreTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`;
         }
       }
-      tr.innerHTML=`<td>${r.tarih}</td><td>${r.plaka}</td><td>${r.model}</td>
+      tr.innerHTML=`<td>${formattedDate}</td><td>${r.plaka}</td><td>${r.model}</td>
         <td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td>
-        <td>${r.durum||"-"}</td><td>${r.createdBy||"-"}</td><td>${actionBtns}</td>`;
+        <td>${
+          r.durum==="Aktif" ? "Teslimat Bekliyor" :
+          r.durum==="Pasif" ? "Teslim Edildi" :
+          r.durum||"-"
+        }</td>
+        <td>${r.createdBy||"-"}</td>
+        <td>
+          ${r.formUrl ? `<a href="${r.formUrl}" target="_blank">📄 Formu Gör</a><br>` : ""}
+          ${actionBtns}
+        </td>`;
       tb.appendChild(tr);
     });
   }
 
   window.applyFilters=function(){ renderTable(); }
-  window.markTeslim=async id=>{ await updateDoc(doc(db,"teslim",id),{durum:"Pasif"}); }
+  window.markTeslim=async id=>{ await updateDoc(doc(db,"teslim",id),{durum:"Teslim Edildi"}); }
   window.editTeslim=async (id,r)=>{
     let tarih=prompt("Tarih:", r.tarih)||r.tarih;
     let plaka=prompt("Plaka:", r.plaka)||r.plaka;
@@ -260,6 +274,27 @@
   window.restoreTeslim=async (id,r)=>{ await setDoc(doc(db,"teslim",id),{...r,restoredAt:serverTimestamp()}); await deleteDoc(doc(db,"teslim_deleted",id)); }
   window.toggleDeleted=function(){ deletedMode=!deletedMode; loadTeslim(); }
   document.getElementById("showPassive").addEventListener("change", renderTable);
+
+  // ✅ Form yükleme fonksiyonu
+  window.uploadForm = async function(id){
+    let input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/pdf,image/*";
+    input.onchange = async e=>{
+      let file = e.target.files[0];
+      if(!file) return;
+      try{
+        let storageRef = ref(storage, "teslimFormlari/"+Date.now()+"_"+file.name);
+        await uploadBytes(storageRef, file);
+        let url = await getDownloadURL(storageRef);
+        await updateDoc(doc(db,"teslim",id), { formUrl: url });
+        alert("Form başarıyla yüklendi ✅");
+      }catch(err){
+        alert("Yükleme hatası: "+err.message);
+      }
+    };
+    input.click();
+  }
 
   window.exportExcel=function(){
     let rows=[["Tarih","Plaka","Model","Firma","Kişi","İrtibat","Durum","Kullanıcı"]];

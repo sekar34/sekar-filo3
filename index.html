@@ -42,11 +42,10 @@
 <!-- Login -->
 <div id="authSection">
   <div class="login-box">
-    <h2>Giriş Yap / Kayıt Ol</h2>
+    <h2>Giriş Yap</h2>
     <input type="email" id="email" placeholder="Email">
     <input type="password" id="password" placeholder="Şifre">
     <button onclick="login()">Giriş Yap</button>
-    <button onclick="register()">Kayıt Ol</button>
     <p id="authError" style="color:red"></p>
   </div>
 </div>
@@ -89,11 +88,11 @@
     <tbody></tbody>
   </table>
 
-  <!-- Kullanıcı Listesi sadece admin görsün -->
+  <!-- Kullanıcı Listesi sadece admin -->
   <div id="userList" style="display:none;">
     <h2>👑 Kullanıcı Listesi</h2>
     <table>
-      <thead><tr><th>Email</th><th>Kayıt Tarihi</th></tr></thead>
+      <thead><tr><th>Email</th><th>Kayıt Tarihi</th><th>Son Giriş</th></tr></thead>
       <tbody id="userTable"></tbody>
     </table>
   </div>
@@ -102,8 +101,13 @@
 <!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { getFirestore, collection, addDoc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, doc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { 
+    getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged 
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { 
+    getFirestore, collection, addDoc, onSnapshot, orderBy, query, serverTimestamp, 
+    updateDoc, doc, deleteDoc, setDoc, getDoc 
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyB-xEmeTVN8oiB4FZzV4UpJpAHkyDHYF4U",
@@ -122,19 +126,9 @@
   let allRecords=[];
   let deletedMode=false;
 
-  /* === Auth === */
-  window.register = async function(){
-    let email=document.getElementById("email").value;
-    let pass=document.getElementById("password").value;
-    try{ 
-      await createUserWithEmailAndPassword(auth,email,pass);
-      await addDoc(collection(db,"users"),{email,createdAt:serverTimestamp()});
-    }
-    catch(err){ document.getElementById("authError").innerText=err.message; }
-  }
-
+  /* === Giriş Yap === */
   window.login = async function(){
-    let email=document.getElementById("email").value;
+    let email=document.getElementById("email").value.trim();
     let pass=document.getElementById("password").value;
     try{ await signInWithEmailAndPassword(auth,email,pass); }
     catch(err){ document.getElementById("authError").innerText=err.message; }
@@ -142,14 +136,16 @@
 
   window.logout = function(){ signOut(auth); }
 
-  onAuthStateChanged(auth, user=>{
+  /* === Auth Takibi === */
+  onAuthStateChanged(auth, async user=>{
     if(user){
       currentUserEmail=user.email;
+
       document.getElementById("authSection").style.display="none";
       document.getElementById("mainSection").style.display="block";
       document.getElementById("mainHeader").style.display="flex";
       document.getElementById("currentUser").innerText="👤 "+user.email;
-      loadTeslim();
+
       if(user.email==="admin@sekarfilo.com"){ 
         document.getElementById("userList").style.display="block"; 
         loadUsers();
@@ -163,7 +159,7 @@
     }
   });
 
-  /* === Kullanıcı Listesi (sadece admin) === */
+  /* === Kullanıcı Listesi (admin) === */
   function loadUsers(){
     const q=query(collection(db,"users"),orderBy("createdAt","desc"));
     onSnapshot(q,snap=>{
@@ -171,8 +167,9 @@
       tb.innerHTML="";
       snap.forEach(d=>{
         let r=d.data();
-        let date=r.createdAt?.toDate().toLocaleString("tr-TR")||"-";
-        tb.innerHTML+=`<tr><td>${r.email}</td><td>${date}</td></tr>`;
+        let created=r.createdAt?.toDate().toLocaleString("tr-TR")||"-";
+        let last=r.lastLogin?.toDate().toLocaleString("tr-TR")||"-";
+        tb.innerHTML+=`<tr><td>${r.email}</td><td>${created}</td><td>${last}</td></tr>`;
       });
     });
   }
@@ -196,13 +193,13 @@
     e.target.reset();
   };
 
+  /* === Teslim Listesi === */
   function loadTeslim(){
     const q=query(collection(db, deletedMode?"teslim_deleted":"teslim"),orderBy("createdAt","desc"));
     onSnapshot(q,snap=>{
       allRecords=[];
       snap.forEach(d=>{
-        let r=d.data();
-        r.id=d.id;
+        let r=d.data(); r.id=d.id;
         allRecords.push(r);
       });
       renderTable();
@@ -212,7 +209,7 @@
   function renderTable(){
     let tb=document.querySelector("#teslimTable tbody");
     tb.innerHTML="";
-    let showPassive = document.getElementById("showPassive").checked;
+    let showPassive=document.getElementById("showPassive").checked;
 
     let filters={};
     document.querySelectorAll(".filter-row input").forEach(inp=>{
@@ -221,13 +218,12 @@
 
     allRecords.forEach(r=>{
       if(!deletedMode && r.durum==="Pasif" && !showPassive) return;
-
       let values=[r.tarih,r.plaka,r.model,r.firma,r.kisi,r.irtibat,r.durum||"-",r.createdBy||"-"];
       let visible=values.every((val,i)=>!filters[i]||val.toString().toLowerCase().includes(filters[i]));
       if(!visible) return;
 
       let tr=document.createElement("tr");
-      tr.className = (r.durum==="Pasif") ? "passive" : "";
+      tr.className=(r.durum==="Pasif")?"passive":"";
       let actionBtns="";
       if(!deletedMode){
         if(r.durum==="Aktif"){
@@ -237,7 +233,7 @@
         if(currentUserEmail==="admin@sekarfilo.com"){
           actionBtns+=`<button class="delete-btn" onclick="deleteTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Sil</button>`;
         }
-      } else {
+      }else{
         if(currentUserEmail==="admin@sekarfilo.com"){
           actionBtns+=`<button class="restore-btn" onclick="restoreTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`;
         }
@@ -278,6 +274,9 @@
     link.download=deletedMode?"Silinenler.csv":"TeslimRaporu.csv";
     link.click();
   }
+
+  // İlk yüklemede teslim kayıtlarını getir
+  loadTeslim();
 </script>
 </body>
 </html>

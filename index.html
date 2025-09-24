@@ -9,22 +9,10 @@
     header h1 { margin:0; font-size:20px; }
     .container { padding:20px; }
 
-    #authSection {
-      display:flex; flex-direction:column; align-items:center; justify-content:center;
-      height:100vh;
-    }
-    .login-box {
-      background:white; padding:30px; border-radius:10px;
-      box-shadow:0 0 8px rgba(0,0,0,0.2);
-      width:300px; text-align:center;
-    }
-    .login-box input, .login-box button {
-      width:100%; padding:10px; margin:8px 0;
-      border:1px solid #ccc; border-radius:5px;
-    }
-    .login-box button {
-      background:#006f3c; color:white; cursor:pointer; border:none;
-    }
+    #authSection { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; }
+    .login-box { background:white; padding:30px; border-radius:10px; box-shadow:0 0 8px rgba(0,0,0,0.2); width:300px; text-align:center; }
+    .login-box input, .login-box button { width:100%; padding:10px; margin:8px 0; border:1px solid #ccc; border-radius:5px; }
+    .login-box button { background:#006f3c; color:white; cursor:pointer; border:none; }
     .login-box button:hover { background:#004f2a; }
 
     table { width:100%; border-collapse:collapse; margin-top:20px; font-size:14px; }
@@ -38,6 +26,7 @@
     .export-btn { background:#006f3c; color:white; padding:6px 12px; border:none; border-radius:5px; cursor:pointer; margin-top:10px; }
     .export-btn:hover { background:#004f2a; }
     .filter-row input { width:90%; padding:4px; font-size:12px; }
+    #userList { margin-top:40px; }
   </style>
 </head>
 <body>
@@ -62,7 +51,7 @@
   </div>
 </div>
 
-<!-- Araç Teslim -->
+<!-- Ana Bölüm -->
 <div id="mainSection" class="container" style="display:none;">
   <h2>Araç Teslim Kaydı</h2>
   <form id="teslimForm">
@@ -99,15 +88,23 @@
     </thead>
     <tbody></tbody>
   </table>
+
+  <!-- Kullanıcı Listesi sadece admin görsün -->
+  <div id="userList" style="display:none;">
+    <h2>👑 Kullanıcı Listesi</h2>
+    <table>
+      <thead><tr><th>Email</th><th>Kayıt Tarihi</th></tr></thead>
+      <tbody id="userTable"></tbody>
+    </table>
+  </div>
 </div>
 
-<!-- Firebase v10 modüler -->
+<!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import { getFirestore, collection, addDoc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, doc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-  /* === Firebase Config === */
   const firebaseConfig = {
     apiKey: "AIzaSyB-xEmeTVN8oiB4FZzV4UpJpAHkyDHYF4U",
     authDomain: "sekar-filo.firebaseapp.com",
@@ -129,7 +126,10 @@
   window.register = async function(){
     let email=document.getElementById("email").value;
     let pass=document.getElementById("password").value;
-    try{ await createUserWithEmailAndPassword(auth,email,pass); }
+    try{ 
+      await createUserWithEmailAndPassword(auth,email,pass);
+      await addDoc(collection(db,"users"),{email,createdAt:serverTimestamp()});
+    }
     catch(err){ document.getElementById("authError").innerText=err.message; }
   }
 
@@ -150,6 +150,10 @@
       document.getElementById("mainHeader").style.display="flex";
       document.getElementById("currentUser").innerText="👤 "+user.email;
       loadTeslim();
+      if(user.email==="admin@sekarfilo.com"){ 
+        document.getElementById("userList").style.display="block"; 
+        loadUsers();
+      }
     }else{
       currentUserEmail="";
       document.getElementById("authSection").style.display="flex";
@@ -158,6 +162,20 @@
       document.getElementById("currentUser").innerText="";
     }
   });
+
+  /* === Kullanıcı Listesi (sadece admin) === */
+  function loadUsers(){
+    const q=query(collection(db,"users"),orderBy("createdAt","desc"));
+    onSnapshot(q,snap=>{
+      let tb=document.getElementById("userTable");
+      tb.innerHTML="";
+      snap.forEach(d=>{
+        let r=d.data();
+        let date=r.createdAt?.toDate().toLocaleString("tr-TR")||"-";
+        tb.innerHTML+=`<tr><td>${r.email}</td><td>${date}</td></tr>`;
+      });
+    });
+  }
 
   /* === Araç Teslim === */
   document.getElementById("teslimForm").onsubmit=async e=>{
@@ -205,15 +223,11 @@
       if(!deletedMode && r.durum==="Pasif" && !showPassive) return;
 
       let values=[r.tarih,r.plaka,r.model,r.firma,r.kisi,r.irtibat,r.durum||"-",r.createdBy||"-"];
-      let visible=true;
-      values.forEach((val,i)=>{
-        if(filters[i] && !val.toString().toLowerCase().includes(filters[i])) visible=false;
-      });
+      let visible=values.every((val,i)=>!filters[i]||val.toString().toLowerCase().includes(filters[i]));
       if(!visible) return;
 
       let tr=document.createElement("tr");
       tr.className = (r.durum==="Pasif") ? "passive" : "";
-
       let actionBtns="";
       if(!deletedMode){
         if(r.durum==="Aktif"){
@@ -228,52 +242,27 @@
           actionBtns+=`<button class="restore-btn" onclick="restoreTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`;
         }
       }
-
-      tr.innerHTML=`
-        <td>${r.tarih}</td><td>${r.plaka}</td><td>${r.model}</td>
+      tr.innerHTML=`<td>${r.tarih}</td><td>${r.plaka}</td><td>${r.model}</td>
         <td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td>
-        <td>${r.durum||"-"}</td><td>${r.createdBy||"-"}</td>
-        <td>${actionBtns}</td>`;
+        <td>${r.durum||"-"}</td><td>${r.createdBy||"-"}</td><td>${actionBtns}</td>`;
       tb.appendChild(tr);
     });
   }
 
   window.applyFilters=function(){ renderTable(); }
-
-  window.markTeslim=async function(id){
-    await updateDoc(doc(db,"teslim",id),{durum:"Pasif"});
-  }
-
-  window.editTeslim=async function(id, r){
+  window.markTeslim=async id=>{ await updateDoc(doc(db,"teslim",id),{durum:"Pasif"}); }
+  window.editTeslim=async (id,r)=>{
     let tarih=prompt("Tarih:", r.tarih)||r.tarih;
     let plaka=prompt("Plaka:", r.plaka)||r.plaka;
     let model=prompt("Model:", r.model)||r.model;
     let firma=prompt("Firma:", r.firma)||r.firma;
     let kisi=prompt("Kişi:", r.kisi)||r.kisi;
     let irtibat=prompt("İrtibat:", r.irtibat)||r.irtibat;
-    await updateDoc(doc(db,"teslim",id),{
-      tarih,plaka:plaka.toUpperCase(),model:model.toUpperCase(),
-      firma:firma.toUpperCase(),kisi:kisi.toUpperCase(),irtibat
-    });
+    await updateDoc(doc(db,"teslim",id),{tarih,plaka:plaka.toUpperCase(),model:model.toUpperCase(),firma:firma.toUpperCase(),kisi:kisi.toUpperCase(),irtibat});
   }
-
-  window.deleteTeslim=async function(id, r){
-    if(confirm("Bu kaydı silmek istediğinize emin misiniz?")){
-      await setDoc(doc(db,"teslim_deleted",id),{...r,deletedAt:serverTimestamp()});
-      await deleteDoc(doc(db,"teslim",id));
-    }
-  }
-
-  window.restoreTeslim=async function(id, r){
-    await setDoc(doc(db,"teslim",id),{...r,restoredAt:serverTimestamp()});
-    await deleteDoc(doc(db,"teslim_deleted",id));
-  }
-
-  window.toggleDeleted=function(){
-    deletedMode=!deletedMode;
-    loadTeslim();
-  }
-
+  window.deleteTeslim=async (id,r)=>{ if(confirm("Silmek istiyor musun?")){ await setDoc(doc(db,"teslim_deleted",id),{...r,deletedAt:serverTimestamp()}); await deleteDoc(doc(db,"teslim",id)); } }
+  window.restoreTeslim=async (id,r)=>{ await setDoc(doc(db,"teslim",id),{...r,restoredAt:serverTimestamp()}); await deleteDoc(doc(db,"teslim_deleted",id)); }
+  window.toggleDeleted=function(){ deletedMode=!deletedMode; loadTeslim(); }
   document.getElementById("showPassive").addEventListener("change", renderTable);
 
   window.exportExcel=function(){

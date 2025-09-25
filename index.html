@@ -234,7 +234,7 @@
 
   /* === Auth Takibi === */
   onAuthStateChanged(auth, async user=>{
-    document.getElementById("loadingScreen").style.display="none"; // yükleme ekranı kapat
+    document.getElementById("loadingScreen").style.display="none"; // yükleme ekranını kapat
     if(user){
       currentUserEmail=user.email;
       document.getElementById("authSection").style.display="none";
@@ -320,14 +320,13 @@
       let tr=document.createElement("tr"); tr.className=(durumDisplay==="Teslim Edildi")?"passive":"";
       let actionBtns="";
       if(!deletedMode){
-        // admin her şeyi düzenleyebilir, kullanıcı sadece bekleyen kayıtları
         if(currentUserEmail==="admin@sekarfilo.com" || durumDisplay!=="Teslim Edildi"){
           actionBtns+=`<button class="edit-btn" onclick='openEditModal(${JSON.stringify(r)}, "teslim")'>Düzenle</button>`;
         }
         if(durumDisplay==="Teslimat Bekliyor"){ actionBtns+=`<button onclick="markTeslim('${r.id}')">Teslim Et</button>`; }
-        actionBtns+=`<button class="delete-btn" onclick="deleteTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Sil</button>`;
+        if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="delete-btn" onclick="deleteTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Sil</button>`; }
       } else {
-        actionBtns+=`<button class="restore-btn" onclick="restoreTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`;
+        if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="restore-btn" onclick="restoreTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`; }
       }
       tr.innerHTML=`<td>${formattedDate}</td><td>${r.plaka}</td><td>${r.model}</td><td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td><td>${durumDisplay}</td><td>${r.createdBy||"-"}</td><td>${actionBtns}</td>`;
       tb.appendChild(tr);
@@ -353,14 +352,13 @@
       let tr=document.createElement("tr"); tr.className=(durumDisplay==="İade Edildi")?"passive":"";
       let actionBtns="";
       if(!deletedMode){
-        // admin her şeyi düzenleyebilir, kullanıcı sadece bekleyen kayıtları
         if(currentUserEmail==="admin@sekarfilo.com" || durumDisplay!=="İade Edildi"){
           actionBtns+=`<button class="edit-btn" onclick='openEditModal(${JSON.stringify(r)}, "iade")'>Düzenle</button>`;
         }
         if(durumDisplay==="İade Bekleniyor"){ actionBtns+=`<button onclick="markIade('${r.id}')">İade Et</button>`; }
-        actionBtns+=`<button class="delete-btn" onclick="deleteIade('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Sil</button>`;
+        if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="delete-btn" onclick="deleteIade('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Sil</button>`; }
       } else {
-        actionBtns+=`<button class="restore-btn" onclick="restoreIade('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`;
+        if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="restore-btn" onclick="restoreIade('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`; }
       }
       tr.innerHTML=`<td>${formattedDate}</td><td>${r.plaka}</td><td>${r.model}</td><td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td><td>${r.km}</td><td>${durumDisplay}</td><td>${r.createdBy||"-"}</td><td>${actionBtns}</td>`;
       tb.appendChild(tr);

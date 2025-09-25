@@ -17,7 +17,6 @@
     th,td { border:1px solid #ccc; padding:6px; text-align:center; }
     th { background:#006f3c; color:white; }
     .logout { background:#900; color:white; padding:5px 10px; border:none; cursor:pointer; }
-    .passive { background:#eee; color:#666; }
     .edit-btn { background:orange; color:white; padding:3px 8px; border:none; border-radius:3px; cursor:pointer; margin:2px; }
     .delete-btn { background:red; color:white; padding:3px 8px; border:none; border-radius:3px; cursor:pointer; margin:2px; }
     .restore-btn { background:#006f3c; color:white; padding:3px 8px; border:none; border-radius:3px; cursor:pointer; margin:2px; }
@@ -31,11 +30,10 @@
     .modal-content label { display:block; margin-top:10px; font-size:13px; text-align:left; }
     .modal-content input { width:100%; padding:6px; margin-top:4px; border:1px solid #ccc; border-radius:5px; }
     .save-btn { margin-top:15px; background:#006f3c; color:white; border:none; padding:8px; width:100%; border-radius:5px; cursor:pointer; }
-    #loadingScreen {
-      position:fixed; top:0; left:0; width:100%; height:100%;
-      background:#fff; display:flex; align-items:center; justify-content:center;
-      font-size:22px; font-weight:bold; color:#006f3c; z-index:2000;
-    }
+    #loadingScreen { position:fixed; top:0; left:0; width:100%; height:100%; background:#fff; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:bold; color:#006f3c; z-index:2000; }
+    /* 🚘 Araç Bilgileri */
+    #dropZone { border:2px dashed #006f3c; padding:20px; text-align:center; border-radius:10px; background:#fafafa; cursor:pointer; }
+    #vehicleSection { display:none; }
   </style>
 </head>
 <body>
@@ -49,6 +47,8 @@
     <button class="export-btn" onclick="showSection('iade')">📦 İadeler</button>
     <button class="export-btn" onclick="showSection('report')">📊 Raporlar</button>
     <button class="export-btn" onclick="exportExcel()">Excel'e Aktar</button>
+    <!-- 🚘 sadece admin -->
+    <button id="vehicleBtn" class="export-btn" onclick="showSection('vehicle')" style="display:none;">🚘 Araç Bilgileri</button>
     <button id="deletedBtn" class="export-btn" onclick="toggleDeleted()">🗑 Silinenler</button>
     <button class="logout" onclick="logout()">Çıkış</button>
   </div>
@@ -64,7 +64,6 @@
     <p id="authError" style="color:red"></p>
   </div>
 </div>
-
 <!-- Teslimatlar -->
 <div id="mainSection" class="container" style="display:none;">
   <h2>Araç Teslim Kaydı</h2>
@@ -77,7 +76,6 @@
     İrtibat No: <input type="text" name="irtibat" required>
     <button type="submit">Kaydet</button>
   </form>
-
   <label>Durum: 
     <select id="statusFilter" onchange="renderTable()">
       <option value="all">Hepsi</option>
@@ -85,24 +83,22 @@
       <option value="edildi">Teslim Edildi</option>
     </select>
   </label>
-
   <table id="teslimTable">
     <thead>
       <tr>
-        <th>#</th>
-        <th>Tarih</th><th>Plaka</th><th>Model</th><th>Firma</th>
+        <th>#</th><th>Tarih</th><th>Plaka</th><th>Model</th><th>Firma</th>
         <th>Kişi</th><th>İrtibat</th><th>Durum</th><th>Kullanıcı</th><th>İşlem</th>
       </tr>
       <tr class="filter-row">
         <td></td>
-        <td><input onkeyup="renderTable()" data-col="0" autocomplete="off"></td>
-        <td><input onkeyup="renderTable()" data-col="1" autocomplete="off"></td>
-        <td><input onkeyup="renderTable()" data-col="2" autocomplete="off"></td>
-        <td><input onkeyup="renderTable()" data-col="3" autocomplete="off"></td>
-        <td><input onkeyup="renderTable()" data-col="4" autocomplete="off"></td>
-        <td><input onkeyup="renderTable()" data-col="5" autocomplete="off"></td>
-        <td><input onkeyup="renderTable()" data-col="6" autocomplete="off"></td>
-        <td><input onkeyup="renderTable()" data-col="7" autocomplete="off"></td>
+        <td><input onkeyup="renderTable()" data-col="0"></td>
+        <td><input onkeyup="renderTable()" data-col="1"></td>
+        <td><input onkeyup="renderTable()" data-col="2"></td>
+        <td><input onkeyup="renderTable()" data-col="3"></td>
+        <td><input onkeyup="renderTable()" data-col="4"></td>
+        <td><input onkeyup="renderTable()" data-col="5"></td>
+        <td><input onkeyup="renderTable()" data-col="6"></td>
+        <td><input onkeyup="renderTable()" data-col="7"></td>
         <td></td>
       </tr>
     </thead>
@@ -124,32 +120,29 @@
     KM: <input type="number" name="km" required>
     <button type="submit">Kaydet</button>
   </form>
-
   <label>Durum: 
     <select id="iadeStatusFilter" onchange="renderIadeTable()">
       <option value="all">Hepsi</option>
-      <option value="bekliyor">İade Bekleniyor</option>
+      <option value="bekliyor">İade Bekliyor</option>
       <option value="edildi">İade Edildi</option>
     </select>
   </label>
-
   <table id="iadeTable">
     <thead>
       <tr>
-        <th>#</th>
-        <th>Tarih</th><th>Plaka</th><th>Model</th><th>Firma</th>
+        <th>#</th><th>Tarih</th><th>Plaka</th><th>Model</th><th>Firma</th>
         <th>Kişi</th><th>İrtibat</th><th>KM</th><th>Durum</th><th>Kullanıcı</th><th>İşlem</th>
       </tr>
       <tr class="filter-row">
         <td></td>
-        <td><input onkeyup="renderIadeTable()" data-col="0" autocomplete="off"></td>
-        <td><input onkeyup="renderIadeTable()" data-col="1" autocomplete="off"></td>
-        <td><input onkeyup="renderIadeTable()" data-col="2" autocomplete="off"></td>
-        <td><input onkeyup="renderIadeTable()" data-col="3" autocomplete="off"></td>
-        <td><input onkeyup="renderIadeTable()" data-col="4" autocomplete="off"></td>
-        <td><input onkeyup="renderIadeTable()" data-col="5" autocomplete="off"></td>
-        <td><input onkeyup="renderIadeTable()" data-col="6" autocomplete="off"></td>
-        <td><input onkeyup="renderIadeTable()" data-col="7" autocomplete="off"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="0"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="1"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="2"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="3"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="4"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="5"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="6"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="7"></td>
         <td></td>
       </tr>
     </thead>
@@ -157,8 +150,9 @@
   </table>
   <div id="iadePagination"></div>
 </div>
-<!-- Rapor Bölümü -->
-<div id="reportSection" class="container">
+
+<!-- Rapor -->
+<div id="reportSection" class="container" style="display:none;">
   <h2>📊 Aylık Teslim & İade Raporu</h2>
   <table id="reportTable">
     <thead>
@@ -173,42 +167,54 @@
   </table>
 </div>
 
-<!-- Düzenleme Modal -->
+<!-- 🚘 Araç Bilgileri -->
+<div id="vehicleSection" class="container" style="display:none;">
+  <h2>🚘 Araç Bilgileri Yükleme</h2>
+  <p>Toplam Kayıtlı Araç: <span id="vehicleCount">0</span></p>
+  <div id="dropZone">
+    Excel sürükle-bırak veya tıkla
+    <input type="file" id="vehicleFile" accept=".xlsx,.xls" style="display:none;">
+  </div>
+  <table id="vehicleTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Plaka</th>
+        <th>Model</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Düzenleme Modalları -->
 <div id="editModal" class="modal">
   <div class="modal-content">
-    <span class="close-btn" onclick="closeEditModal()">&times;</span>
-    <h3>Kayıt Düzenle</h3>
+    <span class="close-btn" onclick="closeModal('editModal')">&times;</span>
+    <h3>Kaydı Düzenle</h3>
     <form id="editForm">
-      <input type="hidden" id="editId">
-      <input type="hidden" id="editType">
-      <label>Tarih</label>
-      <input type="date" id="editTarih">
-      <label>Plaka</label>
-      <input type="text" id="editPlaka">
-      <label>Model</label>
-      <input type="text" id="editModel">
-      <label>Firma</label>
-      <input type="text" id="editFirma">
-      <label>Kişi</label>
-      <input type="text" id="editKisi">
-      <label>İrtibat No</label>
-      <input type="text" id="editIrtibat">
-      <div id="editKmWrapper" style="display:none;">
-        <label>KM</label>
-        <input type="number" id="editKm">
-      </div>
+      <input type="hidden" name="id">
+      <label>Tarih<input type="date" name="tarih"></label>
+      <label>Plaka<input type="text" name="plaka"></label>
+      <label>Model<input type="text" name="model"></label>
+      <label>Firma<input type="text" name="firma"></label>
+      <label>Kişi<input type="text" name="kisi"></label>
+      <label>İrtibat<input type="text" name="irtibat"></label>
+      <label id="kmLabel" style="display:none;">KM<input type="number" name="km"></label>
       <button type="submit" class="save-btn">Kaydet</button>
     </form>
   </div>
 </div>
-
-<!-- Firebase + SheetJS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { getFirestore, collection, addDoc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, doc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { 
+    getFirestore, collection, addDoc, onSnapshot, orderBy, query, serverTimestamp, 
+    updateDoc, doc, deleteDoc, setDoc, getDoc 
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+  /* ==================== FIREBASE CONFIG ==================== */
   const firebaseConfig = {
     apiKey: "AIzaSyB-xEmeTVN8oiB4FZzV4UpJpAHkyDHYF4U",
     authDomain: "sekar-filo.firebaseapp.com",
@@ -222,326 +228,336 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  let currentUserEmail="";
-  let allRecords=[];
-  let allIadeRecords=[];
-  let deletedMode=false;
+  let currentUserEmail = "";
+  let isAdmin = false;
+  let allRecords = [];
+  let allIadeRecords = [];
+  let vehicleData = [];
+  let deletedMode = false;
 
-  /* Pagination */
-  let teslimPage=1, teslimPerPage=25;
-  let iadePage=1, iadePerPage=25;
+  /* ==================== LOGIN ==================== */
+  window.login = async () => {
+    try { await signInWithEmailAndPassword(auth, email.value, password.value); }
+    catch (e) { authError.innerText = e.message; }
+  };
+  window.logout = () => signOut(auth);
 
-  /* Filtreleri sıfırla */
-  function clearFilters() {
-    document.querySelectorAll(".filter-row input").forEach(inp => inp.value="");
-  }
-
-  /* Login */
-  window.login = async function(){
-    let email=document.getElementById("email").value.trim();
-    let pass=document.getElementById("password").value;
-    try{ await signInWithEmailAndPassword(auth,email,pass); }
-    catch(err){ document.getElementById("authError").innerText=err.message; }
-  }
-  window.logout = function(){ signOut(auth); }
-
-  /* Auth Takibi */
-  onAuthStateChanged(auth, async user=>{
-    document.getElementById("loadingScreen").style.display="none";
-    if(user){
-      currentUserEmail=user.email;
-      document.getElementById("authSection").style.display="none";
-      document.getElementById("mainHeader").style.display="flex";
-      document.getElementById("currentUser").innerText=currentUserEmail;
-      clearFilters();   // ✅ filtreleri temizle
-      showSection('main');
+  onAuthStateChanged(auth, user => {
+    loadingScreen.style.display = "none";
+    if (user) {
+      currentUserEmail = user.email;
+      isAdmin = (currentUserEmail === "admin@sekarfilo.com");
+      authSection.style.display = "none";
+      mainHeader.style.display = "flex";
+      currentUser.innerText = currentUserEmail;
+      if (isAdmin) vehicleBtn.style.display = "inline-block";
+      loadVehicles();
+      showSection("main");
       loadTeslim();
       loadIade();
-    }else{
-      currentUserEmail="";
-      document.getElementById("authSection").style.display="flex";
-      document.getElementById("mainHeader").style.display="none";
-      document.getElementById("mainSection").style.display="none";
-      document.getElementById("iadeSection").style.display="none";
-      document.getElementById("reportSection").style.display="none";
+    } else {
+      authSection.style.display = "flex";
+      mainHeader.style.display = "none";
+      mainSection.style.display = "none";
+      iadeSection.style.display = "none";
+      reportSection.style.display = "none";
+      vehicleSection.style.display = "none";
     }
   });
 
-  /* Bölüm Göster */
-  window.showSection=function(sec){
-    document.getElementById("mainSection").style.display="none";
-    document.getElementById("iadeSection").style.display="none";
-    document.getElementById("reportSection").style.display="none";
-    if(sec==="main") document.getElementById("mainSection").style.display="block";
-    if(sec==="iade") document.getElementById("iadeSection").style.display="block";
-    if(sec==="report"){ document.getElementById("reportSection").style.display="block"; renderReport(); }
-  }
+  window.showSection = sec => {
+    mainSection.style.display = iadeSection.style.display = reportSection.style.display = vehicleSection.style.display = "none";
+    if (sec === "main") mainSection.style.display = "block";
+    if (sec === "iade") iadeSection.style.display = "block";
+    if (sec === "report") { reportSection.style.display = "block"; renderReport(); }
+    if (sec === "vehicle") vehicleSection.style.display = "block";
+  };
 
-  /* Teslim Kayıt */
-  document.getElementById("teslimForm").onsubmit = async e=>{
+  /* ==================== TESLİMATLAR ==================== */
+  teslimForm.onsubmit = async e => {
     e.preventDefault();
-    let f=new FormData(e.target);
-    await addDoc(collection(db,"teslim"),{
-      tarih:f.get("tarih"),
-      plaka:f.get("plaka").toUpperCase(),
-      model:f.get("model").toUpperCase(),
-      firma:f.get("firma").toUpperCase(),
-      kisi:f.get("kisi").toUpperCase(),
-      irtibat:f.get("irtibat"),
-      durum:"Teslimat Bekliyor",
-      createdBy:currentUserEmail,
-      createdAt:serverTimestamp()
+    let f = new FormData(e.target);
+    await addDoc(collection(db, "teslim"), {
+      tarih: f.get("tarih"),
+      plaka: f.get("plaka").toUpperCase(),
+      model: f.get("model").toUpperCase(),
+      firma: f.get("firma").toUpperCase(),
+      kisi: f.get("kisi").toUpperCase(),
+      irtibat: f.get("irtibat"),
+      durum: "Teslimat Bekliyor",
+      createdBy: currentUserEmail,
+      createdAt: serverTimestamp()
     });
     e.target.reset();
-  }
+  };
 
-  /* İade Kayıt */
-  document.getElementById("iadeForm").onsubmit = async e=>{
-    e.preventDefault();
-    let f=new FormData(e.target);
-    await addDoc(collection(db,"iade"),{
-      tarih:f.get("tarih"),
-      plaka:f.get("plaka").toUpperCase(),
-      model:f.get("model").toUpperCase(),
-      firma:f.get("firma").toUpperCase(),
-      kisi:f.get("kisi").toUpperCase(),
-      irtibat:f.get("irtibat"),
-      km:f.get("km"),
-      durum:"İade Bekleniyor",
-      createdBy:currentUserEmail,
-      createdAt:serverTimestamp()
+  function loadTeslim() {
+    onSnapshot(query(collection(db, deletedMode ? "teslim_deleted" : "teslim"), orderBy("createdAt", "desc")), snap => {
+      allRecords = [];
+      snap.forEach(d => { let r = d.data(); r.id = d.id; allRecords.push(r); });
+      renderTable();
     });
-    e.target.reset();
   }
 
-  /* Teslim Tablosu */
-  function loadTeslim(){
-    const q=query(collection(db, deletedMode?"teslim_deleted":"teslim"),orderBy("createdAt","desc"));
-    onSnapshot(q,snap=>{ allRecords=[]; snap.forEach(d=>{ let r=d.data(); r.id=d.id; allRecords.push(r); }); renderTable(); });
-  }
+  window.renderTable = function () {
+    let tb = teslimTable.querySelector("tbody");
+    tb.innerHTML = "";
+    let filter = statusFilter.value;
+    let inputs = teslimTable.querySelectorAll(".filter-row input");
 
-  window.renderTable = function(){
-    let tb=document.querySelector("#teslimTable tbody"); tb.innerHTML="";
-    let statusFilter=document.getElementById("statusFilter").value;
-    let filters={}; document.querySelectorAll("#teslimTable .filter-row input").forEach(inp=>{ filters[inp.dataset.col]=inp.value.toLowerCase(); });
-
-    let filtered=allRecords.filter(r=>{
-      let formattedDate=r.tarih;
-      if(r.tarih&&r.tarih.includes("-")){ let p=r.tarih.split("-"); formattedDate=`${p[2]}.${p[1]}.${p[0].slice(2)}`; }
-      let durumDisplay=r.durum||"-";
-      if(statusFilter==="bekliyor"&&durumDisplay!=="Teslimat Bekliyor") return false;
-      if(statusFilter==="edildi"&&durumDisplay!=="Teslim Edildi") return false;
-      let values=[formattedDate,r.plaka,r.model,r.firma,r.kisi,r.irtibat,durumDisplay||"-",r.createdBy||"-"];
-      return values.every((val,i)=>!filters[i]||val.toString().toLowerCase().includes(filters[i]));
+    let filtered = allRecords.filter(r => {
+      if (filter === "bekliyor" && r.durum !== "Teslimat Bekliyor") return false;
+      if (filter === "edildi" && r.durum !== "Teslim Edildi") return false;
+      let pass = true;
+      inputs.forEach(inp => {
+        if (inp.value && !JSON.stringify(r).toUpperCase().includes(inp.value.toUpperCase())) pass = false;
+      });
+      return pass;
     });
 
-    let start=(teslimPage-1)*teslimPerPage;
-    let pageRecords=filtered.slice(start,start+teslimPerPage);
-
-    pageRecords.forEach((r,idx)=>{
-      let formattedDate=r.tarih;
-      if(r.tarih&&r.tarih.includes("-")){ let p=r.tarih.split("-"); formattedDate=`${p[2]}.${p[1]}.${p[0].slice(2)}`; }
-      let durumDisplay=r.durum||"-";
-      let tr=document.createElement("tr"); tr.className=(durumDisplay==="Teslim Edildi")?"passive":"";
-      let actionBtns="";
-      if(!deletedMode){
-        if(currentUserEmail==="admin@sekarfilo.com" || durumDisplay!=="Teslim Edildi"){
-          actionBtns+=`<button class="edit-btn" onclick='openEditModal(${JSON.stringify(r)}, "teslim")'>Düzenle</button>`;
-        }
-        if(durumDisplay==="Teslimat Bekliyor"){ actionBtns+=`<button onclick="markTeslim('${r.id}')">Teslim Et</button>`; }
-        if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="delete-btn" onclick="deleteTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Sil</button>`; }
-      } else {
-        if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="restore-btn" onclick="restoreTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`; }
-      }
-      let indexNo=start+idx+1;
-      tr.innerHTML=`<td>${indexNo}</td><td>${formattedDate}</td><td>${r.plaka}</td><td>${r.model}</td><td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td><td>${durumDisplay}</td><td>${r.createdBy||"-"}</td><td>${actionBtns}</td>`;
+    filtered.forEach((r, i) => {
+      let tr = document.createElement("tr");
+      let buttons = `
+        ${r.durum === "Teslimat Bekliyor" ? `<button class="restore-btn" onclick="markTeslim('${r.id}')">✅ Teslim Et</button>` : ""}
+        ${(isAdmin || (r.durum === "Teslimat Bekliyor")) ? `<button class="edit-btn" onclick="openEditModal('teslim','${r.id}')">✏️ Düzenle</button>` : ""}
+        ${isAdmin ? `<button class="delete-btn" onclick="deleteTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g, '&quot;')})">🗑 Sil</button>` : ""}
+        ${deletedMode && isAdmin ? `<button class="restore-btn" onclick="restoreTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g, '&quot;')})">♻️ Geri Yükle</button>` : ""}
+      `;
+      tr.innerHTML = `
+        <td>${i + 1}</td>
+        <td>${r.tarih}</td>
+        <td>${r.plaka}</td>
+        <td>${r.model}</td>
+        <td>${r.firma}</td>
+        <td>${r.kisi}</td>
+        <td>${r.irtibat}</td>
+        <td>${r.durum}</td>
+        <td>${r.createdBy}</td>
+        <td>${buttons}</td>`;
       tb.appendChild(tr);
     });
+  };
 
-    let totalPages=Math.ceil(filtered.length/teslimPerPage);
-    let pagDiv=document.getElementById("teslimPagination");
-    pagDiv.innerHTML=`Sayfa ${teslimPage}/${totalPages} `;
-    if(teslimPage>1) pagDiv.innerHTML+=`<button onclick="changeTeslimPage(${teslimPage-1})">◀</button>`;
-    if(teslimPage<totalPages) pagDiv.innerHTML+=`<button onclick="changeTeslimPage(${teslimPage+1})">▶</button>`;
-  }
-  window.changeTeslimPage=function(p){ teslimPage=p; renderTable(); }
+  /* Düzenleme Modalı - bilgileri doldurma */
+  window.openEditModal = async (type, id) => {
+    const modal = document.getElementById("editModal");
+    const form = document.getElementById("editForm");
+    form.reset();
+    form.dataset.type = type;
+    form.idField = id;
 
-  /* İade Tablosu */
-  function loadIade(){
-    const q=query(collection(db, deletedMode?"iade_deleted":"iade"),orderBy("createdAt","desc"));
-    onSnapshot(q,snap=>{ allIadeRecords=[]; snap.forEach(d=>{ let r=d.data(); r.id=d.id; allIadeRecords.push(r); }); renderIadeTable(); });
-  }
+    if(type==="teslim"){ document.getElementById("kmLabel").style.display="none"; }
+    else { document.getElementById("kmLabel").style.display="block"; }
 
-  window.renderIadeTable=function(){
-    let tb=document.querySelector("#iadeTable tbody"); tb.innerHTML="";
-    let statusFilter=document.getElementById("iadeStatusFilter").value;
-    let filters={}; document.querySelectorAll("#iadeTable .filter-row input").forEach(inp=>{ filters[inp.dataset.col]=inp.value.toLowerCase(); });
-
-    let filtered=allIadeRecords.filter(r=>{
-      let formattedDate=r.tarih;
-      if(r.tarih&&r.tarih.includes("-")){ let p=r.tarih.split("-"); formattedDate=`${p[2]}.${p[1]}.${p[0].slice(2)}`; }
-      let durumDisplay=r.durum||"-";
-      if(statusFilter==="bekliyor"&&durumDisplay!=="İade Bekleniyor") return false;
-      if(statusFilter==="edildi"&&durumDisplay!=="İade Edildi") return false;
-      let values=[formattedDate,r.plaka,r.model,r.firma,r.kisi,r.irtibat,r.km,durumDisplay||"-",r.createdBy||"-"];
-      return values.every((val,i)=>!filters[i]||val.toString().toLowerCase().includes(filters[i]));
-    });
-
-    let start=(iadePage-1)*iadePerPage;
-    let pageRecords=filtered.slice(start,start+iadePerPage);
-
-    pageRecords.forEach((r,idx)=>{
-      let formattedDate=r.tarih;
-      if(r.tarih&&r.tarih.includes("-")){ let p=r.tarih.split("-"); formattedDate=`${p[2]}.${p[1]}.${p[0].slice(2)}`; }
-      let durumDisplay=r.durum||"-";
-      let tr=document.createElement("tr"); tr.className=(durumDisplay==="İade Edildi")?"passive":"";
-      let actionBtns="";
-      if(!deletedMode){
-        if(currentUserEmail==="admin@sekarfilo.com" || durumDisplay!=="İade Edildi"){
-          actionBtns+=`<button class="edit-btn" onclick='openEditModal(${JSON.stringify(r)}, "iade")'>Düzenle</button>`;
-        }
-        if(durumDisplay==="İade Bekleniyor"){ actionBtns+=`<button onclick="markIade('${r.id}')">İade Et</button>`; }
-        if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="delete-btn" onclick="deleteIade('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Sil</button>`; }
-      } else {
-        if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="restore-btn" onclick="restoreIade('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`; }
-      }
-      let indexNo=start+idx+1;
-      tr.innerHTML=`<td>${indexNo}</td><td>${formattedDate}</td><td>${r.plaka}</td><td>${r.model}</td><td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td><td>${r.km}</td><td>${durumDisplay}</td><td>${r.createdBy||"-"}</td><td>${actionBtns}</td>`;
-      tb.appendChild(tr);
-    });
-
-    let totalPages=Math.ceil(filtered.length/iadePerPage);
-    let pagDiv=document.getElementById("iadePagination");
-    pagDiv.innerHTML=`Sayfa ${iadePage}/${totalPages} `;
-    if(iadePage>1) pagDiv.innerHTML+=`<button onclick="changeIadePage(${iadePage-1})">◀</button>`;
-    if(iadePage<totalPages) pagDiv.innerHTML+=`<button onclick="changeIadePage(${iadePage+1})">▶</button>`;
-  }
-  window.changeIadePage=function(p){ iadePage=p; renderIadeTable(); }
-
-  /* Durum Güncelle */
-  window.markTeslim=async function(id){ await updateDoc(doc(db,"teslim",id),{durum:"Teslim Edildi"}); }
-  window.markIade=async function(id){ await updateDoc(doc(db,"iade",id),{durum:"İade Edildi"}); }
-
-  /* Sil & Geri Yükle */
-  window.deleteTeslim=async function(id,data){ await setDoc(doc(db,"teslim_deleted",id),data); await deleteDoc(doc(db,"teslim",id)); }
-  window.deleteIade=async function(id,data){ await setDoc(doc(db,"iade_deleted",id),data); await deleteDoc(doc(db,"iade",id)); }
-  window.restoreTeslim=async function(id,data){ await setDoc(doc(db,"teslim",id),data); await deleteDoc(doc(db,"teslim_deleted",id)); }
-  window.restoreIade=async function(id,data){ await setDoc(doc(db,"iade",id),data); await deleteDoc(doc(db,"iade_deleted",id)); }
-
-  window.toggleDeleted=function(){ deletedMode=!deletedMode; loadTeslim(); loadIade(); }
-
-  /* Excel Export */
-  window.exportExcel=function(){
-    let wb=XLSX.utils.book_new();
-    let ws1=XLSX.utils.table_to_sheet(document.getElementById("teslimTable"));
-    let ws2=XLSX.utils.table_to_sheet(document.getElementById("iadeTable"));
-    XLSX.utils.book_append_sheet(wb,ws1,"Teslimatlar");
-    XLSX.utils.book_append_sheet(wb,ws2,"Iadeler");
-    XLSX.writeFile(wb,"arac_teslim_iade.xlsx");
-  }
-
-  /* Edit Modal */
-  window.openEditModal = function(rec, type){
-    document.getElementById("editModal").style.display="flex";
-    document.getElementById("editId").value = rec.id;
-    document.getElementById("editType").value = type;
-    document.getElementById("editTarih").value = rec.tarih || "";
-    document.getElementById("editPlaka").value = rec.plaka || "";
-    document.getElementById("editModel").value = rec.model || "";
-    document.getElementById("editFirma").value = rec.firma || "";
-    document.getElementById("editKisi").value = rec.kisi || "";
-    document.getElement
-    document.getElementById("editIrtibat").value = rec.irtibat || "";
-    if(type==="iade"){
-      document.getElementById("editKmWrapper").style.display="block";
-      document.getElementById("editKm").value = rec.km || "";
-    } else {
-      document.getElementById("editKmWrapper").style.display="none";
+    // Firestore’dan kaydı çek
+    const snap = await getDoc(doc(db, type, id));
+    if (snap.exists()) {
+      let data = snap.data();
+      form.querySelector("[name='id']").value = id;
+      form.querySelector("[name='tarih']").value = data.tarih || "";
+      form.querySelector("[name='plaka']").value = data.plaka || "";
+      form.querySelector("[name='model']").value = data.model || "";
+      form.querySelector("[name='firma']").value = data.firma || "";
+      form.querySelector("[name='kisi']").value = data.kisi || "";
+      form.querySelector("[name='irtibat']").value = data.irtibat || "";
+      if (type === "iade") form.querySelector("[name='km']").value = data.km || "";
     }
-  }
-  window.closeEditModal = function(){ document.getElementById("editModal").style.display="none"; }
-  document.getElementById("editForm").onsubmit = async e=>{
+
+    modal.style.display = "flex";
+  };
+
+  window.closeModal = id => document.getElementById(id).style.display="none";
+
+  editForm.onsubmit = async e => {
     e.preventDefault();
-    let id=document.getElementById("editId").value;
-    let type=document.getElementById("editType").value;
-    let data={
-      tarih: document.getElementById("editTarih").value,
-      plaka: document.getElementById("editPlaka").value.toUpperCase(),
-      model: document.getElementById("editModel").value.toUpperCase(),
-      firma: document.getElementById("editFirma").value.toUpperCase(),
-      kisi: document.getElementById("editKisi").value.toUpperCase(),
-      irtibat: document.getElementById("editIrtibat").value
+    let type = e.target.dataset.type;
+    let id = e.target.idField;
+    let f = new FormData(e.target);
+    let upd = {
+      tarih:f.get("tarih"), plaka:f.get("plaka").toUpperCase(), model:f.get("model").toUpperCase(),
+      firma:f.get("firma").toUpperCase(), kisi:f.get("kisi").toUpperCase(), irtibat:f.get("irtibat")
     };
-    if(type==="iade"){
-      data.km=document.getElementById("editKm").value;
-      await updateDoc(doc(db,"iade",id),data);
-    } else {
-      await updateDoc(doc(db,"teslim",id),data);
+    if(type==="iade") upd.km = f.get("km");
+    await updateDoc(doc(db, type, id), upd);
+    closeModal("editModal");
+  };
+
+  window.markTeslim = async id => { await updateDoc(doc(db,"teslim",id),{durum:"Teslim Edildi"}); };
+  window.deleteTeslim = async (id,data)=>{ await setDoc(doc(db,"teslim_deleted",id),data); await deleteDoc(doc(db,"teslim",id)); };
+  window.restoreTeslim = async (id,data)=>{ await setDoc(doc(db,"teslim",id),data); await deleteDoc(doc(db,"teslim_deleted",id)); };
+
+  /* ==================== İADELER ==================== */
+  iadeForm.onsubmit = async e => {
+    e.preventDefault();
+    let f = new FormData(e.target);
+    await addDoc(collection(db, "iade"), {
+      tarih: f.get("tarih"),
+      plaka: f.get("plaka").toUpperCase(),
+      model: f.get("model").toUpperCase(),
+      firma: f.get("firma").toUpperCase(),
+      kisi: f.get("kisi").toUpperCase(),
+      irtibat: f.get("irtibat"),
+      km: f.get("km"),
+      durum: "İade Bekliyor",
+      createdBy: currentUserEmail,
+      createdAt: serverTimestamp()
+    });
+    e.target.reset();
+  };
+
+  function loadIade() {
+    onSnapshot(query(collection(db, deletedMode ? "iade_deleted" : "iade"), orderBy("createdAt", "desc")), snap => {
+      allIadeRecords = [];
+      snap.forEach(d => { let r = d.data(); r.id = d.id; allIadeRecords.push(r); });
+      renderIadeTable();
+    });
+  }
+
+  window.renderIadeTable = function () {
+    let tb = iadeTable.querySelector("tbody");
+    tb.innerHTML = "";
+    let filter = iadeStatusFilter.value;
+    let inputs = iadeTable.querySelectorAll(".filter-row input");
+
+    let filtered = allIadeRecords.filter(r => {
+      if (filter === "bekliyor" && r.durum !== "İade Bekliyor") return false;
+      if (filter === "edildi" && r.durum !== "İade Edildi") return false;
+      let pass = true;
+      inputs.forEach(inp => { if (inp.value && !JSON.stringify(r).toUpperCase().includes(inp.value.toUpperCase())) pass=false; });
+      return pass;
+    });
+
+    filtered.forEach((r, i) => {
+      let buttons = `
+        ${r.durum === "İade Bekliyor" ? `<button class="restore-btn" onclick="markIade('${r.id}')">✅ İade Et</button>` : ""}
+        ${(isAdmin || (r.durum === "İade Bekliyor")) ? `<button class="edit-btn" onclick="openEditModal('iade','${r.id}')">✏️ Düzenle</button>` : ""}
+        ${isAdmin ? `<button class="delete-btn" onclick="deleteIade('${r.id}', ${JSON.stringify(r).replace(/"/g, '&quot;')})">🗑 Sil</button>` : ""}
+        ${deletedMode && isAdmin ? `<button class="restore-btn" onclick="restoreIade('${r.id}', ${JSON.stringify(r).replace(/"/g, '&quot;')})">♻️ Geri Yükle</button>` : ""}
+      `;
+      let tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${i + 1}</td>
+        <td>${r.tarih}</td>
+        <td>${r.plaka}</td>
+        <td>${r.model}</td>
+        <td>${r.firma}</td>
+        <td>${r.kisi}</td>
+        <td>${r.irtibat}</td>
+        <td>${r.km}</td>
+        <td>${r.durum}</td>
+        <td>${r.createdBy}</td>
+        <td>${buttons}</td>`;
+      tb.appendChild(tr);
+    });
+  };
+
+  window.markIade = async id => { await updateDoc(doc(db,"iade",id),{durum:"İade Edildi"}); };
+  window.deleteIade = async (id,data)=>{ await setDoc(doc(db,"iade_deleted",id),data); await deleteDoc(doc(db,"iade",id)); };
+  window.restoreIade = async (id,data)=>{ await setDoc(doc(db,"iade",id),data); await deleteDoc(doc(db,"iade_deleted",id)); };
+
+  /* Silinenleri göster/gizle */
+  window.toggleDeleted = () => { deletedMode = !deletedMode; loadTeslim(); loadIade(); };
+  /* ==================== RAPORLAR ==================== */
+  function renderReport() {
+    let data = {};
+    let tbody = document.querySelector("#reportTable tbody");
+    tbody.innerHTML = "";
+
+    // 📋 Teslimatlar (sadece "Teslim Edildi")
+    allRecords.forEach(r => {
+      if (r.tarih && r.durum === "Teslim Edildi") {
+        let y = r.tarih.split("-")[0];
+        let m = parseInt(r.tarih.split("-")[1]);
+        if (!data[y]) data[y] = { teslim: Array(12).fill(0), iade: Array(12).fill(0) };
+        data[y].teslim[m - 1]++;
+      }
+    });
+
+    // 📦 İadeler (sadece "İade Edildi")
+    allIadeRecords.forEach(r => {
+      if (r.tarih && r.durum === "İade Edildi") {
+        let y = r.tarih.split("-")[0];
+        let m = parseInt(r.tarih.split("-")[1]);
+        if (!data[y]) data[y] = { teslim: Array(12).fill(0), iade: Array(12).fill(0) };
+        data[y].iade[m - 1]++;
+      }
+    });
+
+    // 📊 Tabloya yazdır
+    for (let y in data) {
+      // Teslimatlar satırı
+      let rowT = `<tr><td>${y} Teslim</td>`;
+      let sumT = 0;
+      for (let i = 0; i < 12; i++) { rowT += `<td>${data[y].teslim[i]}</td>`; sumT += data[y].teslim[i]; }
+      rowT += `<td>${sumT}</td></tr>`;
+      tbody.innerHTML += rowT;
+
+      // İadeler satırı
+      let rowI = `<tr><td>${y} İade</td>`;
+      let sumI = 0;
+      for (let i = 0; i < 12; i++) { rowI += `<td>${data[y].iade[i]}</td>`; sumI += data[y].iade[i]; }
+      rowI += `<td>${sumI}</td></tr>`;
+      tbody.innerHTML += rowI;
     }
-    closeEditModal();
   }
 
-  /* Rapor */
-  function parseDate(raw){ 
-    let date; 
-    if(raw instanceof Object&&raw.toDate){ date=raw.toDate(); }
-    else if(typeof raw==="string"){ 
-      if(raw.includes("-")) date=new Date(raw); 
-      else if(raw.includes(".")){ 
-        let [g,a,y]=raw.split("."); 
-        date=new Date(`${y}-${a}-${g}`);
-      } 
-    }
-    return date; 
+  /* ==================== ARAÇ BİLGİLERİ ==================== */
+  function loadVehicles() {
+    onSnapshot(query(collection(db, "vehicles"), orderBy("plaka", "asc")), snap => {
+      vehicleData = [];
+      snap.forEach(d => vehicleData.push(d.data()));
+      renderVehicleTable();
+    });
   }
 
-  window.renderReport=function(){
-    let tb=document.querySelector("#reportTable tbody"); tb.innerHTML="";
-    let raporTeslim={}, raporIade={}; 
-    let toplamTeslim=0, toplamIade=0;
-
-    allRecords.forEach(r=>{ 
-      if(r.durum!=="Teslim Edildi") return; 
-      if(!r.tarih) return;
-      let d=parseDate(r.tarih); if(!d||isNaN(d)) return; 
-      let ay=d.getMonth(), yil=d.getFullYear();
-      if(!raporTeslim[yil]) raporTeslim[yil]=Array(12).fill(0); 
-      raporTeslim[yil][ay]++; 
-    });
-
-    allIadeRecords.forEach(r=>{ 
-      if(r.durum!=="İade Edildi") return; 
-      if(!r.tarih) return;
-      let d=parseDate(r.tarih); if(!d||isNaN(d)) return; 
-      let ay=d.getMonth(), yil=d.getFullYear();
-      if(!raporIade[yil]) raporIade[yil]=Array(12).fill(0); 
-      raporIade[yil][ay]++; 
-    });
-
-    Object.keys(raporTeslim).sort().forEach(yil=>{ 
-      let aylik=raporTeslim[yil]; 
-      let toplam=aylik.reduce((a,b)=>a+b,0); 
-      toplamTeslim+=toplam;
-      let row=`<tr><td>${yil} (Teslim)</td>`; 
-      for(let i=0;i<12;i++){ row+=`<td>${aylik[i]}</td>`; } 
-      row+=`<td><b>${toplam}</b></td></tr>`; 
-      tb.innerHTML+=row; 
-    });
-
-    Object.keys(raporIade).sort().forEach(yil=>{ 
-      let aylik=raporIade[yil]; 
-      let toplam=aylik.reduce((a,b)=>a+b,0); 
-      toplamIade+=toplam;
-      let row=`<tr><td>${yil} (İade)</td>`; 
-      for(let i=0;i<12;i++){ row+=`<td>${aylik[i]}</td>`; } 
-      row+=`<td><b>${toplam}</b></td></tr>`; 
-      tb.innerHTML+=row; 
-    });
-
-    tb.innerHTML+=`<tr style="background:#eee;font-weight:bold;">
-      <td>GENEL TOPLAM</td><td colspan="12"></td>
-      <td>${toplamTeslim+toplamIade}</td></tr>`;
+  async function saveVehicleToDB(v) {
+    await setDoc(doc(db, "vehicles", v.plaka), v);
   }
+
+  function renderVehicleTable() {
+    let tb = vehicleTable.querySelector("tbody");
+    tb.innerHTML = "";
+    vehicleData.forEach((v, i) => {
+      let tr = document.createElement("tr");
+      tr.innerHTML = `<td>${i + 1}</td><td>${v.plaka}</td><td>${v.model}</td>`;
+      tb.appendChild(tr);
+    });
+    vehicleCount.innerText = vehicleData.length;
+  }
+
+  function handleVehicleFile(file) {
+    let r = new FileReader();
+    r.onload = e => {
+      let wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+      let rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+      for (let i = 1; i < rows.length; i++) {
+        if (rows[i] && rows[i][0] && rows[i][1]) {
+          let v = {
+            plaka: rows[i][0].toString().toUpperCase(),
+            model: rows[i][1].toString().toUpperCase()
+          };
+          saveVehicleToDB(v);
+        }
+      }
+    };
+    r.readAsArrayBuffer(file);
+  }
+
+  document.getElementById("vehicleFile").addEventListener("change", e => {
+    if (e.target.files.length > 0) handleVehicleFile(e.target.files[0]);
+  });
+  document.getElementById("dropZone").addEventListener("click", () => vehicleFile.click());
+
+  // 🚘 Plaka yazıldığında model otomatik gelsin
+  document.querySelector("#teslimForm input[name='plaka']").addEventListener("input", function () {
+    let f = vehicleData.find(v => v.plaka === this.value.toUpperCase());
+    if (f) teslimForm.querySelector("input[name='model']").value = f.model;
+  });
+  document.querySelector("#iadeForm input[name='plaka']").addEventListener("input", function () {
+    let f = vehicleData.find(v => v.plaka === this.value.toUpperCase());
+    if (f) iadeForm.querySelector("input[name='model']").value = f.model;
+  });
+
 </script>
 </body>
 </html>

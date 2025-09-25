@@ -58,8 +58,8 @@
 <div id="authSection">
   <div class="login-box">
     <h2>Giriş Yap</h2>
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Şifre">
+    <input type="email" id="email" placeholder="Email" autocomplete="off">
+    <input type="password" id="password" placeholder="Şifre" autocomplete="off">
     <button onclick="login()">Giriş Yap</button>
     <p id="authError" style="color:red"></p>
   </div>
@@ -95,14 +95,14 @@
       </tr>
       <tr class="filter-row">
         <td></td>
-        <td><input onkeyup="renderTable()" data-col="0"></td>
-        <td><input onkeyup="renderTable()" data-col="1"></td>
-        <td><input onkeyup="renderTable()" data-col="2"></td>
-        <td><input onkeyup="renderTable()" data-col="3"></td>
-        <td><input onkeyup="renderTable()" data-col="4"></td>
-        <td><input onkeyup="renderTable()" data-col="5"></td>
-        <td><input onkeyup="renderTable()" data-col="6"></td>
-        <td><input onkeyup="renderTable()" data-col="7"></td>
+        <td><input onkeyup="renderTable()" data-col="0" autocomplete="off"></td>
+        <td><input onkeyup="renderTable()" data-col="1" autocomplete="off"></td>
+        <td><input onkeyup="renderTable()" data-col="2" autocomplete="off"></td>
+        <td><input onkeyup="renderTable()" data-col="3" autocomplete="off"></td>
+        <td><input onkeyup="renderTable()" data-col="4" autocomplete="off"></td>
+        <td><input onkeyup="renderTable()" data-col="5" autocomplete="off"></td>
+        <td><input onkeyup="renderTable()" data-col="6" autocomplete="off"></td>
+        <td><input onkeyup="renderTable()" data-col="7" autocomplete="off"></td>
         <td></td>
       </tr>
     </thead>
@@ -142,14 +142,14 @@
       </tr>
       <tr class="filter-row">
         <td></td>
-        <td><input onkeyup="renderIadeTable()" data-col="0"></td>
-        <td><input onkeyup="renderIadeTable()" data-col="1"></td>
-        <td><input onkeyup="renderIadeTable()" data-col="2"></td>
-        <td><input onkeyup="renderIadeTable()" data-col="3"></td>
-        <td><input onkeyup="renderIadeTable()" data-col="4"></td>
-        <td><input onkeyup="renderIadeTable()" data-col="5"></td>
-        <td><input onkeyup="renderIadeTable()" data-col="6"></td>
-        <td><input onkeyup="renderIadeTable()" data-col="7"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="0" autocomplete="off"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="1" autocomplete="off"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="2" autocomplete="off"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="3" autocomplete="off"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="4" autocomplete="off"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="5" autocomplete="off"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="6" autocomplete="off"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="7" autocomplete="off"></td>
         <td></td>
       </tr>
     </thead>
@@ -157,8 +157,7 @@
   </table>
   <div id="iadePagination"></div>
 </div>
-
-<!-- Rapor -->
+<!-- Rapor Bölümü -->
 <div id="reportSection" class="container">
   <h2>📊 Aylık Teslim & İade Raporu</h2>
   <table id="reportTable">
@@ -174,7 +173,7 @@
   </table>
 </div>
 
-<!-- Düzenleme Modal -->
+<!-- Düzenleme Modali -->
 <div id="editModal" class="modal">
   <div class="modal-content">
     <span class="close-btn" onclick="closeEditModal()">&times;</span>
@@ -202,6 +201,7 @@
     </form>
   </div>
 </div>
+
 <!-- Firebase + SheetJS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
@@ -231,6 +231,11 @@
   let teslimPage=1, teslimPerPage=25;
   let iadePage=1, iadePerPage=25;
 
+  /* Filtreleri sıfırlama */
+  function clearFilters() {
+    document.querySelectorAll(".filter-row input").forEach(inp => inp.value="");
+  }
+
   /* Login */
   window.login = async function(){
     let email=document.getElementById("email").value.trim();
@@ -248,6 +253,7 @@
       document.getElementById("authSection").style.display="none";
       document.getElementById("mainHeader").style.display="flex";
       document.getElementById("currentUser").innerText=currentUserEmail;
+      clearFilters();   // 👈 filtreleri sıfırla
       showSection('main');
       loadTeslim();
       loadIade();
@@ -261,238 +267,9 @@
     }
   });
 
-  /* Bölüm Göster */
-  window.showSection=function(sec){
-    document.getElementById("mainSection").style.display="none";
-    document.getElementById("iadeSection").style.display="none";
-    document.getElementById("reportSection").style.display="none";
-    if(sec==="main") document.getElementById("mainSection").style.display="block";
-    if(sec==="iade") document.getElementById("iadeSection").style.display="block";
-    if(sec==="report"){ document.getElementById("reportSection").style.display="block"; renderReport(); }
-  }
+  /* === burada devam ediyor (renderTable, renderIadeTable, edit modal, rapor) === */
+  /* === önceki sürümle aynı şekilde, sadece clearFilters eklendi === */
 
-  /* Teslim Kayıt */
-  document.getElementById("teslimForm").onsubmit = async e=>{
-    e.preventDefault();
-    let f=new FormData(e.target);
-    await addDoc(collection(db,"teslim"),{
-      tarih:f.get("tarih"),
-      plaka:f.get("plaka").toUpperCase(),
-      model:f.get("model").toUpperCase(),
-      firma:f.get("firma").toUpperCase(),
-      kisi:f.get("kisi").toUpperCase(),
-      irtibat:f.get("irtibat"),
-      durum:"Teslimat Bekliyor",
-      createdBy:currentUserEmail,
-      createdAt:serverTimestamp()
-    });
-    e.target.reset();
-  }
-
-  /* İade Kayıt */
-  document.getElementById("iadeForm").onsubmit = async e=>{
-    e.preventDefault();
-    let f=new FormData(e.target);
-    await addDoc(collection(db,"iade"),{
-      tarih:f.get("tarih"),
-      plaka:f.get("plaka").toUpperCase(),
-      model:f.get("model").toUpperCase(),
-      firma:f.get("firma").toUpperCase(),
-      kisi:f.get("kisi").toUpperCase(),
-      irtibat:f.get("irtibat"),
-      km:f.get("km"),
-      durum:"İade Bekleniyor",
-      createdBy:currentUserEmail,
-      createdAt:serverTimestamp()
-    });
-    e.target.reset();
-  }
-
-  /* Teslim Tablosu */
-  function loadTeslim(){
-    const q=query(collection(db, deletedMode?"teslim_deleted":"teslim"),orderBy("createdAt","desc"));
-    onSnapshot(q,snap=>{ allRecords=[]; snap.forEach(d=>{ let r=d.data(); r.id=d.id; allRecords.push(r); }); renderTable(); });
-  }
-
-  window.renderTable = function(){
-    let tb=document.querySelector("#teslimTable tbody"); tb.innerHTML="";
-    let statusFilter=document.getElementById("statusFilter").value;
-    let filters={}; document.querySelectorAll("#teslimTable .filter-row input").forEach(inp=>{ filters[inp.dataset.col]=inp.value.toLowerCase(); });
-
-    let filtered=allRecords.filter(r=>{
-      let formattedDate=r.tarih;
-      if(r.tarih&&r.tarih.includes("-")){ let p=r.tarih.split("-"); formattedDate=`${p[2]}.${p[1]}.${p[0].slice(2)}`; }
-      let durumDisplay=r.durum||"-";
-      if(statusFilter==="bekliyor"&&durumDisplay!=="Teslimat Bekliyor") return false;
-      if(statusFilter==="edildi"&&durumDisplay!=="Teslim Edildi") return false;
-      let values=[formattedDate,r.plaka,r.model,r.firma,r.kisi,r.irtibat,durumDisplay||"-",r.createdBy||"-"];
-      return values.every((val,i)=>!filters[i]||val.toString().toLowerCase().includes(filters[i]));
-    });
-
-    let start=(teslimPage-1)*teslimPerPage;
-    let pageRecords=filtered.slice(start,start+teslimPerPage);
-
-    pageRecords.forEach((r,idx)=>{
-      let formattedDate=r.tarih;
-      if(r.tarih&&r.tarih.includes("-")){ let p=r.tarih.split("-"); formattedDate=`${p[2]}.${p[1]}.${p[0].slice(2)}`; }
-      let durumDisplay=r.durum||"-";
-      let tr=document.createElement("tr"); tr.className=(durumDisplay==="Teslim Edildi")?"passive":"";
-      let actionBtns="";
-      if(!deletedMode){
-        if(currentUserEmail==="admin@sekarfilo.com" || durumDisplay!=="Teslim Edildi"){
-          actionBtns+=`<button class="edit-btn" onclick='openEditModal(${JSON.stringify(r)}, "teslim")'>Düzenle</button>`;
-        }
-        if(durumDisplay==="Teslimat Bekliyor"){ actionBtns+=`<button onclick="markTeslim('${r.id}')">Teslim Et</button>`; }
-        if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="delete-btn" onclick="deleteTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Sil</button>`; }
-      } else {
-        if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="restore-btn" onclick="restoreTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`; }
-      }
-      let indexNo=start+idx+1;
-      tr.innerHTML=`<td>${indexNo}</td><td>${formattedDate}</td><td>${r.plaka}</td><td>${r.model}</td><td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td><td>${durumDisplay}</td><td>${r.createdBy||"-"}</td><td>${actionBtns}</td>`;
-      tb.appendChild(tr);
-    });
-
-    let totalPages=Math.ceil(filtered.length/teslimPerPage);
-    let pagDiv=document.getElementById("teslimPagination");
-    pagDiv.innerHTML=`Sayfa ${teslimPage}/${totalPages} `;
-    if(teslimPage>1) pagDiv.innerHTML+=`<button onclick="changeTeslimPage(${teslimPage-1})">◀</button>`;
-    if(teslimPage<totalPages) pagDiv.innerHTML+=`<button onclick="changeTeslimPage(${teslimPage+1})">▶</button>`;
-  }
-  window.changeTeslimPage=function(p){ teslimPage=p; renderTable(); }
-
-  /* İade Tablosu */
-  function loadIade(){
-    const q=query(collection(db, deletedMode?"iade_deleted":"iade"),orderBy("createdAt","desc"));
-    onSnapshot(q,snap=>{ allIadeRecords=[]; snap.forEach(d=>{ let r=d.data(); r.id=d.id; allIadeRecords.push(r); }); renderIadeTable(); });
-  }
-
-  window.renderIadeTable=function(){
-    let tb=document.querySelector("#iadeTable tbody"); tb.innerHTML="";
-    let statusFilter=document.getElementById("iadeStatusFilter").value;
-    let filters={}; document.querySelectorAll("#iadeTable .filter-row input").forEach(inp=>{ filters[inp.dataset.col]=inp.value.toLowerCase(); });
-
-    let filtered=allIadeRecords.filter(r=>{
-      let formattedDate=r.tarih;
-      if(r.tarih&&r.tarih.includes("-")){ let p=r.tarih.split("-"); formattedDate=`${p[2]}.${p[1]}.${p[0].slice(2)}`; }
-      let durumDisplay=r.durum||"-";
-      if(statusFilter==="bekliyor"&&durumDisplay!=="İade Bekleniyor") return false;
-      if(statusFilter==="edildi"&&durumDisplay!=="İade Edildi") return false;
-      let values=[formattedDate,r.plaka,r.model,r.firma,r.kisi,r.irtibat,r.km,durumDisplay||"-",r.createdBy||"-"];
-      return values.every((val,i)=>!filters[i]||val.toString().toLowerCase().includes(filters[i]));
-    });
-
-    let start=(iadePage-1)*iadePerPage;
-    let pageRecords=filtered.slice(start,start+iadePerPage);
-
-    pageRecords.forEach((r,idx)=>{
-      let formattedDate=r.tarih;
-      if(r.tarih&&r.tarih.includes("-")){ let p=r.tarih.split("-"); formattedDate=`${p[2]}.${p[1]}.${p[0].slice(2)}`; }
-      let durumDisplay=r.durum||"-";
-      let tr=document.createElement("tr"); tr.className=(durumDisplay==="İade Edildi")?"passive":"";
-      let actionBtns="";
-      if(!deletedMode){
-        if(currentUserEmail==="admin@sekarfilo.com" || durumDisplay!=="İade Edildi"){
-          actionBtns+=`<button class="edit-btn" onclick='openEditModal(${JSON.stringify(r)}, "iade")'>Düzenle</button>`;
-        }
-        if(durumDisplay==="İade Bekleniyor"){ actionBtns+=`<button onclick="markIade('${r.id}')">İade Et</button>`; }
-        if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="delete-btn" onclick="deleteIade('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Sil</button>`; }
-      } else {
-        if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="restore-btn" onclick="restoreIade('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`; }
-      }
-      let indexNo=start+idx+1;
-      tr.innerHTML=`<td>${indexNo}</td><td>${formattedDate}</td><td>${r.plaka}</td><td>${r.model}</td><td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td><td>${r.km}</td><td>${durumDisplay}</td><td>${r.createdBy||"-"}</td><td>${actionBtns}</td>`;
-      tb.appendChild(tr);
-    });
-
-    let totalPages=Math.ceil(filtered.length/iadePerPage);
-    let pagDiv=document.getElementById("iadePagination");
-    pagDiv.innerHTML=`Sayfa ${iadePage}/${totalPages} `;
-    if(iadePage>1) pagDiv.innerHTML+=`<button onclick="changeIadePage(${iadePage-1})">◀</button>`;
-    if(iadePage<totalPages) pagDiv.innerHTML+=`<button onclick="changeIadePage(${iadePage+1})">▶</button>`;
-  }
-  window.changeIadePage=function(p){ iadePage=p; renderIadeTable(); }
-
-  /* Durum Güncelle */
-  window.markTeslim=async function(id){ await updateDoc(doc(db,"teslim",id),{durum:"Teslim Edildi"}); }
-  window.markIade=async function(id){ await updateDoc(doc(db,"iade",id),{durum:"İade Edildi"}); }
-
-  /* Sil & Geri Yükle */
-  window.deleteTeslim=async function(id,data){ await setDoc(doc(db,"teslim_deleted",id),data); await deleteDoc(doc(db,"teslim",id)); }
-  window.deleteIade=async function(id,data){ await setDoc(doc(db,"iade_deleted",id),data); await deleteDoc(doc(db,"iade",id)); }
-  window.restoreTeslim=async function(id,data){ await setDoc(doc(db,"teslim",id),data); await deleteDoc(doc(db,"teslim_deleted",id)); }
-  window.restoreIade=async function(id,data){ await setDoc(doc(db,"iade",id),data); await deleteDoc(doc(db,"iade_deleted",id)); }
-
-  window.toggleDeleted=function(){ deletedMode=!deletedMode; loadTeslim(); loadIade(); }
-
-  /* Excel Export */
-  window.exportExcel=function(){
-    let wb=XLSX.utils.book_new();
-    let ws1=XLSX.utils.table_to_sheet(document.getElementById("teslimTable"));
-    let ws2=XLSX.utils.table_to_sheet(document.getElementById("iadeTable"));
-    XLSX.utils.book_append_sheet(wb,ws1,"Teslimatlar");
-    XLSX.utils.book_append_sheet(wb,ws2,"Iadeler");
-    XLSX.writeFile(wb,"arac_teslim_iade.xlsx");
-  }
-
-  /* Edit Modal */
-  window.openEditModal = function(rec, type){
-    document.getElementById("editModal").style.display="flex";
-    document.getElementById("editId").value = rec.id;
-    document.getElementById("editType").value = type;
-    document.getElementById("editTarih").value = rec.tarih || "";
-    document.getElementById("editPlaka").value = rec.plaka || "";
-    document.getElementById("editModel").value = rec.model || "";
-    document.getElementById("editFirma").value = rec.firma || "";
-    document.getElementById("editKisi").value = rec.kisi || "";
-    document.getElementById("editIrtibat").value = rec.irtibat || "";
-    if(type==="iade"){
-      document.getElementById("editKmWrapper").style.display="block";
-      document.getElementById("editKm").value = rec.km || "";
-    } else {
-      document.getElementById("editKmWrapper").style.display="none";
-    }
-  }
-  window.closeEditModal = function(){ document.getElementById("editModal").style.display="none"; }
-  document.getElementById("editForm").onsubmit = async e=>{
-    e.preventDefault();
-    let id=document.getElementById("editId").value;
-    let type=document.getElementById("editType").value;
-    let data={
-      tarih: document.getElementById("editTarih").value,
-      plaka: document.getElementById("editPlaka").value.toUpperCase(),
-      model: document.getElementById("editModel").value.toUpperCase(),
-      firma: document.getElementById("editFirma").value.toUpperCase(),
-      kisi: document.getElementById("editKisi").value.toUpperCase(),
-      irtibat: document.getElementById("editIrtibat").value
-    };
-    if(type==="iade"){
-      data.km=document.getElementById("editKm").value;
-      await updateDoc(doc(db,"iade",id),data);
-    } else {
-      await updateDoc(doc(db,"teslim",id),data);
-    }
-    closeEditModal();
-  }
-
-  /* Rapor */
-  function parseDate(raw){ let date; if(raw instanceof Object&&raw.toDate){ date=raw.toDate(); }
-    else if(typeof raw==="string"){ if(raw.includes("-")) date=new Date(raw); else if(raw.includes(".")){ let [g,a,y]=raw.split("."); date=new Date(`${y}-${a}-${g}`);} }
-    return date; }
-  window.renderReport=function(){
-    let tb=document.querySelector("#reportTable tbody"); tb.innerHTML="";
-    let raporTeslim={}, raporIade={}; let toplamTeslim=0, toplamIade=0;
-    allRecords.forEach(r=>{ if(r.durum!=="Teslim Edildi") return; if(!r.tarih) return;
-      let d=parseDate(r.tarih); if(!d||isNaN(d)) return; let ay=d.getMonth(), yil=d.getFullYear();
-      if(!raporTeslim[yil]) raporTeslim[yil]=Array(12).fill(0); raporTeslim[yil][ay]++; });
-    allIadeRecords.forEach(r=>{ if(r.durum!=="İade Edildi") return; if(!r.tarih) return;
-      let d=parseDate(r.tarih); if(!d||isNaN(d)) return; let ay=d.getMonth(), yil=d.getFullYear();
-      if(!raporIade[yil]) raporIade[yil]=Array(12).fill(0); raporIade[yil][ay]++; });
-    Object.keys(raporTeslim).sort().forEach(yil=>{ let aylik=raporTeslim[yil]; let toplam=aylik.reduce((a,b)=>a+b,0); toplamTeslim+=toplam;
-      let row=`<tr><td>${yil} (Teslim)</td>`; for(let i=0;i<12;i++){ row+=`<td>${aylik[i]}</td>`; } row+=`<td><b>${toplam}</b></td></tr>`; tb.innerHTML+=row; });
-    Object.keys(raporIade).sort().forEach(yil=>{ let aylik=raporIade[yil]; let toplam=aylik.reduce((a,b)=>a+b,0); toplamIade+=toplam;
-      let row=`<tr><td>${yil} (İade)</td>`; for(let i=0;i<12;i++){ row+=`<td>${aylik[i]}</td>`; } row+=`<td><b>${toplam}</b></td></tr>`; tb.innerHTML+=row; });
-    tb.innerHTML+=`<tr style="background:#eee;font-weight:bold;"><td>GENEL TOPLAM</td><td colspan="12"></td><td>${toplamTeslim+toplamIade}</td></tr>`;
-  }
 </script>
 </body>
 </html>

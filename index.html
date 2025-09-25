@@ -31,7 +31,6 @@
     .modal-content label { display:block; margin-top:10px; font-size:13px; text-align:left; }
     .modal-content input { width:100%; padding:6px; margin-top:4px; border:1px solid #ccc; border-radius:5px; }
     .save-btn { margin-top:15px; background:#006f3c; color:white; border:none; padding:8px; width:100%; border-radius:5px; cursor:pointer; }
-    /* Yükleme ekranı */
     #loadingScreen {
       position:fixed; top:0; left:0; width:100%; height:100%;
       background:#fff; display:flex; align-items:center; justify-content:center;
@@ -40,7 +39,6 @@
   </style>
 </head>
 <body>
-<!-- Yükleme ekranı -->
 <div id="loadingScreen">⏳ Yükleniyor...</div>
 
 <header id="mainHeader" style="display:none;">
@@ -66,7 +64,8 @@
     <p id="authError" style="color:red"></p>
   </div>
 </div>
-<!-- Teslimatlar Bölümü -->
+
+<!-- Teslimatlar -->
 <div id="mainSection" class="container" style="display:none;">
   <h2>Araç Teslim Kaydı</h2>
   <form id="teslimForm">
@@ -96,6 +95,7 @@
       </tr>
       <tr class="filter-row">
         <td></td>
+        <td><input onkeyup="renderTable()" data-col="0"></td>
         <td><input onkeyup="renderTable()" data-col="1"></td>
         <td><input onkeyup="renderTable()" data-col="2"></td>
         <td><input onkeyup="renderTable()" data-col="3"></td>
@@ -103,7 +103,6 @@
         <td><input onkeyup="renderTable()" data-col="5"></td>
         <td><input onkeyup="renderTable()" data-col="6"></td>
         <td><input onkeyup="renderTable()" data-col="7"></td>
-        <td><input onkeyup="renderTable()" data-col="8"></td>
         <td></td>
       </tr>
     </thead>
@@ -112,7 +111,7 @@
   <div id="teslimPagination"></div>
 </div>
 
-<!-- İadeler Bölümü -->
+<!-- İadeler -->
 <div id="iadeSection" class="container" style="display:none;">
   <h2>Araç İade Kaydı</h2>
   <form id="iadeForm">
@@ -143,6 +142,7 @@
       </tr>
       <tr class="filter-row">
         <td></td>
+        <td><input onkeyup="renderIadeTable()" data-col="0"></td>
         <td><input onkeyup="renderIadeTable()" data-col="1"></td>
         <td><input onkeyup="renderIadeTable()" data-col="2"></td>
         <td><input onkeyup="renderIadeTable()" data-col="3"></td>
@@ -150,8 +150,6 @@
         <td><input onkeyup="renderIadeTable()" data-col="5"></td>
         <td><input onkeyup="renderIadeTable()" data-col="6"></td>
         <td><input onkeyup="renderIadeTable()" data-col="7"></td>
-        <td><input onkeyup="renderIadeTable()" data-col="8"></td>
-        <td><input onkeyup="renderIadeTable()" data-col="9"></td>
         <td></td>
       </tr>
     </thead>
@@ -160,7 +158,7 @@
   <div id="iadePagination"></div>
 </div>
 
-<!-- Rapor Bölümü -->
+<!-- Rapor -->
 <div id="reportSection" class="container">
   <h2>📊 Aylık Teslim & İade Raporu</h2>
   <table id="reportTable">
@@ -229,11 +227,11 @@
   let allIadeRecords=[];
   let deletedMode=false;
 
-  /* === Pagination === */
+  /* Pagination */
   let teslimPage=1, teslimPerPage=25;
   let iadePage=1, iadePerPage=25;
 
-  /* === Login === */
+  /* Login */
   window.login = async function(){
     let email=document.getElementById("email").value.trim();
     let pass=document.getElementById("password").value;
@@ -242,7 +240,7 @@
   }
   window.logout = function(){ signOut(auth); }
 
-  /* === Auth Takibi === */
+  /* Auth Takibi */
   onAuthStateChanged(auth, async user=>{
     document.getElementById("loadingScreen").style.display="none";
     if(user){
@@ -263,7 +261,7 @@
     }
   });
 
-  /* === Bölüm Göster === */
+  /* Bölüm Göster */
   window.showSection=function(sec){
     document.getElementById("mainSection").style.display="none";
     document.getElementById("iadeSection").style.display="none";
@@ -273,7 +271,7 @@
     if(sec==="report"){ document.getElementById("reportSection").style.display="block"; renderReport(); }
   }
 
-  /* === Teslim Kayıt Ekle === */
+  /* Teslim Kayıt */
   document.getElementById("teslimForm").onsubmit = async e=>{
     e.preventDefault();
     let f=new FormData(e.target);
@@ -291,7 +289,7 @@
     e.target.reset();
   }
 
-  /* === İade Kayıt Ekle === */
+  /* İade Kayıt */
   document.getElementById("iadeForm").onsubmit = async e=>{
     e.preventDefault();
     let f=new FormData(e.target);
@@ -310,7 +308,7 @@
     e.target.reset();
   }
 
-  /* === Teslim Tablosu === */
+  /* Teslim Tablosu */
   function loadTeslim(){
     const q=query(collection(db, deletedMode?"teslim_deleted":"teslim"),orderBy("createdAt","desc"));
     onSnapshot(q,snap=>{ allRecords=[]; snap.forEach(d=>{ let r=d.data(); r.id=d.id; allRecords.push(r); }); renderTable(); });
@@ -327,7 +325,7 @@
       let durumDisplay=r.durum||"-";
       if(statusFilter==="bekliyor"&&durumDisplay!=="Teslimat Bekliyor") return false;
       if(statusFilter==="edildi"&&durumDisplay!=="Teslim Edildi") return false;
-      let values=[null,formattedDate,r.plaka,r.model,r.firma,r.kisi,r.irtibat,durumDisplay||"-",r.createdBy||"-"];
+      let values=[formattedDate,r.plaka,r.model,r.firma,r.kisi,r.irtibat,durumDisplay||"-",r.createdBy||"-"];
       return values.every((val,i)=>!filters[i]||val.toString().toLowerCase().includes(filters[i]));
     });
 
@@ -360,12 +358,9 @@
     if(teslimPage>1) pagDiv.innerHTML+=`<button onclick="changeTeslimPage(${teslimPage-1})">◀</button>`;
     if(teslimPage<totalPages) pagDiv.innerHTML+=`<button onclick="changeTeslimPage(${teslimPage+1})">▶</button>`;
   }
+  window.changeTeslimPage=function(p){ teslimPage=p; renderTable(); }
 
-  window.changeTeslimPage=function(p){
-    teslimPage=p;
-    renderTable();
-  }
-  /* === İade Tablosu === */
+  /* İade Tablosu */
   function loadIade(){
     const q=query(collection(db, deletedMode?"iade_deleted":"iade"),orderBy("createdAt","desc"));
     onSnapshot(q,snap=>{ allIadeRecords=[]; snap.forEach(d=>{ let r=d.data(); r.id=d.id; allIadeRecords.push(r); }); renderIadeTable(); });
@@ -382,7 +377,7 @@
       let durumDisplay=r.durum||"-";
       if(statusFilter==="bekliyor"&&durumDisplay!=="İade Bekleniyor") return false;
       if(statusFilter==="edildi"&&durumDisplay!=="İade Edildi") return false;
-      let values=[null,formattedDate,r.plaka,r.model,r.firma,r.kisi,r.irtibat,r.km,durumDisplay||"-",r.createdBy||"-"];
+      let values=[formattedDate,r.plaka,r.model,r.firma,r.kisi,r.irtibat,r.km,durumDisplay||"-",r.createdBy||"-"];
       return values.every((val,i)=>!filters[i]||val.toString().toLowerCase().includes(filters[i]));
     });
 
@@ -415,26 +410,21 @@
     if(iadePage>1) pagDiv.innerHTML+=`<button onclick="changeIadePage(${iadePage-1})">◀</button>`;
     if(iadePage<totalPages) pagDiv.innerHTML+=`<button onclick="changeIadePage(${iadePage+1})">▶</button>`;
   }
+  window.changeIadePage=function(p){ iadePage=p; renderIadeTable(); }
 
-  window.changeIadePage=function(p){
-    iadePage=p;
-    renderIadeTable();
-  }
-
-  /* === Durum Güncelle === */
+  /* Durum Güncelle */
   window.markTeslim=async function(id){ await updateDoc(doc(db,"teslim",id),{durum:"Teslim Edildi"}); }
   window.markIade=async function(id){ await updateDoc(doc(db,"iade",id),{durum:"İade Edildi"}); }
 
-  /* === Sil & Geri Yükle === */
+  /* Sil & Geri Yükle */
   window.deleteTeslim=async function(id,data){ await setDoc(doc(db,"teslim_deleted",id),data); await deleteDoc(doc(db,"teslim",id)); }
   window.deleteIade=async function(id,data){ await setDoc(doc(db,"iade_deleted",id),data); await deleteDoc(doc(db,"iade",id)); }
   window.restoreTeslim=async function(id,data){ await setDoc(doc(db,"teslim",id),data); await deleteDoc(doc(db,"teslim_deleted",id)); }
   window.restoreIade=async function(id,data){ await setDoc(doc(db,"iade",id),data); await deleteDoc(doc(db,"iade_deleted",id)); }
 
-  /* === Silinenleri Göster/Gizle === */
   window.toggleDeleted=function(){ deletedMode=!deletedMode; loadTeslim(); loadIade(); }
 
-  /* === Excel Export === */
+  /* Excel Export */
   window.exportExcel=function(){
     let wb=XLSX.utils.book_new();
     let ws1=XLSX.utils.table_to_sheet(document.getElementById("teslimTable"));
@@ -444,7 +434,7 @@
     XLSX.writeFile(wb,"arac_teslim_iade.xlsx");
   }
 
-  /* === Düzenleme Modal İşlemleri === */
+  /* Edit Modal */
   window.openEditModal = function(rec, type){
     document.getElementById("editModal").style.display="flex";
     document.getElementById("editId").value = rec.id;
@@ -462,9 +452,7 @@
       document.getElementById("editKmWrapper").style.display="none";
     }
   }
-  window.closeEditModal = function(){
-    document.getElementById("editModal").style.display="none";
-  }
+  window.closeEditModal = function(){ document.getElementById("editModal").style.display="none"; }
   document.getElementById("editForm").onsubmit = async e=>{
     e.preventDefault();
     let id=document.getElementById("editId").value;
@@ -486,7 +474,7 @@
     closeEditModal();
   }
 
-  /* === Rapor === */
+  /* Rapor */
   function parseDate(raw){ let date; if(raw instanceof Object&&raw.toDate){ date=raw.toDate(); }
     else if(typeof raw==="string"){ if(raw.includes("-")) date=new Date(raw); else if(raw.includes(".")){ let [g,a,y]=raw.split("."); date=new Date(`${y}-${a}-${g}`);} }
     return date; }

@@ -43,7 +43,7 @@
     <button class="export-btn" onclick="showSection('iade')">📦 İadeler</button>
     <button class="export-btn" onclick="showSection('report')">📊 Raporlar</button>
     <button class="export-btn" onclick="exportExcel()">Excel'e Aktar</button>
-    <button id="deletedBtn" class="export-btn" onclick="toggleDeleted()" style="display:none;">🗑 Silinenler</button>
+    <button id="deletedBtn" class="export-btn" onclick="toggleDeleted()">🗑 Silinenler</button>
     <button class="logout" onclick="logout()">Çıkış</button>
   </div>
 </header>
@@ -58,7 +58,6 @@
     <p id="authError" style="color:red"></p>
   </div>
 </div>
-
 <!-- Teslimatlar Bölümü -->
 <div id="mainSection" class="container" style="display:none;">
   <h2>Araç Teslim Kaydı</h2>
@@ -146,7 +145,6 @@
     <tbody></tbody>
   </table>
 </div>
-
 <!-- Rapor Bölümü -->
 <div id="reportSection" class="container">
   <h2>📊 Aylık Teslim & İade Raporu</h2>
@@ -191,7 +189,6 @@
     </form>
   </div>
 </div>
-
 <!-- Firebase + SheetJS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
@@ -232,6 +229,7 @@
       currentUserEmail=user.email;
       document.getElementById("authSection").style.display="none";
       document.getElementById("mainHeader").style.display="flex";
+      document.getElementById("currentUser").innerText=currentUserEmail;
       showSection('main');
       loadTeslim();
       loadIade();
@@ -255,6 +253,43 @@
     if(sec==="report"){ document.getElementById("reportSection").style.display="block"; renderReport(); }
   }
 
+  /* === Teslim Kayıt Ekle === */
+  document.getElementById("teslimForm").onsubmit = async e=>{
+    e.preventDefault();
+    let f=new FormData(e.target);
+    await addDoc(collection(db,"teslim"),{
+      tarih:f.get("tarih"),
+      plaka:f.get("plaka").toUpperCase(),
+      model:f.get("model").toUpperCase(),
+      firma:f.get("firma").toUpperCase(),
+      kisi:f.get("kisi").toUpperCase(),
+      irtibat:f.get("irtibat"),
+      durum:"Teslimat Bekliyor",
+      createdBy:currentUserEmail,
+      createdAt:serverTimestamp()
+    });
+    e.target.reset();
+  }
+
+  /* === İade Kayıt Ekle === */
+  document.getElementById("iadeForm").onsubmit = async e=>{
+    e.preventDefault();
+    let f=new FormData(e.target);
+    await addDoc(collection(db,"iade"),{
+      tarih:f.get("tarih"),
+      plaka:f.get("plaka").toUpperCase(),
+      model:f.get("model").toUpperCase(),
+      firma:f.get("firma").toUpperCase(),
+      kisi:f.get("kisi").toUpperCase(),
+      irtibat:f.get("irtibat"),
+      km:f.get("km"),
+      durum:"İade Bekleniyor",
+      createdBy:currentUserEmail,
+      createdAt:serverTimestamp()
+    });
+    e.target.reset();
+  }
+
   /* === Teslim Tablosu === */
   function loadTeslim(){
     const q=query(collection(db, deletedMode?"teslim_deleted":"teslim"),orderBy("createdAt","desc"));
@@ -273,14 +308,14 @@
       let values=[formattedDate,r.plaka,r.model,r.firma,r.kisi,r.irtibat,durumDisplay||"-",r.createdBy||"-"];
       let visible=values.every((val,i)=>!filters[i]||val.toString().toLowerCase().includes(filters[i])); if(!visible) return;
       let tr=document.createElement("tr"); tr.className=(durumDisplay==="Teslim Edildi")?"passive":"";
-      let actionBtns=""; if(!deletedMode){
-        // Düzenle: admin her şeyi, normal kullanıcı Teslim Edildi dışındakileri
-        if(currentUserEmail==="admin@sekarfilo.com" || durumDisplay!=="Teslim Edildi"){
-          actionBtns+=`<button class="edit-btn" onclick='openEditModal(${JSON.stringify(r)}, "teslim")'>Düzenle</button>`;
-        }
+      let actionBtns="";
+      if(!deletedMode){
+        actionBtns+=`<button class="edit-btn" onclick='openEditModal(${JSON.stringify(r)}, "teslim")'>Düzenle</button>`;
         if(durumDisplay==="Teslimat Bekliyor"){ actionBtns+=`<button onclick="markTeslim('${r.id}')">Teslim Et</button>`; }
-        if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="delete-btn" onclick="deleteTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Sil</button>`; }
-      } else { if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="restore-btn" onclick="restoreTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`; } }
+        actionBtns+=`<button class="delete-btn" onclick="deleteTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Sil</button>`;
+      } else {
+        actionBtns+=`<button class="restore-btn" onclick="restoreTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`;
+      }
       tr.innerHTML=`<td>${formattedDate}</td><td>${r.plaka}</td><td>${r.model}</td><td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td><td>${durumDisplay}</td><td>${r.createdBy||"-"}</td><td>${actionBtns}</td>`;
       tb.appendChild(tr);
     });
@@ -304,17 +339,40 @@
       let values=[formattedDate,r.plaka,r.model,r.firma,r.kisi,r.irtibat,r.km,durumDisplay||"-",r.createdBy||"-"];
       let visible=values.every((val,i)=>!filters[i]||val.toString().toLowerCase().includes(filters[i])); if(!visible) return;
       let tr=document.createElement("tr"); tr.className=(durumDisplay==="İade Edildi")?"passive":"";
-      let actionBtns=""; if(!deletedMode){
-        // Düzenle: admin her şeyi, normal kullanıcı İade Edildi dışındakileri
-        if(currentUserEmail==="admin@sekarfilo.com" || durumDisplay!=="İade Edildi"){
-          actionBtns+=`<button class="edit-btn" onclick='openEditModal(${JSON.stringify(r)}, "iade")'>Düzenle</button>`;
-        }
+      let actionBtns="";
+      if(!deletedMode){
+        actionBtns+=`<button class="edit-btn" onclick='openEditModal(${JSON.stringify(r)}, "iade")'>Düzenle</button>`;
         if(durumDisplay==="İade Bekleniyor"){ actionBtns+=`<button onclick="markIade('${r.id}')">İade Et</button>`; }
-        if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="delete-btn" onclick="deleteIade('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Sil</button>`; }
-      } else { if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="restore-btn" onclick="restoreIade('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`; } }
+        actionBtns+=`<button class="delete-btn" onclick="deleteIade('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Sil</button>`;
+      } else {
+        actionBtns+=`<button class="restore-btn" onclick="restoreIade('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`;
+      }
       tr.innerHTML=`<td>${formattedDate}</td><td>${r.plaka}</td><td>${r.model}</td><td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td><td>${r.km}</td><td>${durumDisplay}</td><td>${r.createdBy||"-"}</td><td>${actionBtns}</td>`;
       tb.appendChild(tr);
     });
+  }
+
+  /* === Durum Güncelle === */
+  window.markTeslim=async function(id){ await updateDoc(doc(db,"teslim",id),{durum:"Teslim Edildi"}); }
+  window.markIade=async function(id){ await updateDoc(doc(db,"iade",id),{durum:"İade Edildi"}); }
+
+  /* === Sil & Geri Yükle === */
+  window.deleteTeslim=async function(id,data){ await setDoc(doc(db,"teslim_deleted",id),data); await deleteDoc(doc(db,"teslim",id)); }
+  window.deleteIade=async function(id,data){ await setDoc(doc(db,"iade_deleted",id),data); await deleteDoc(doc(db,"iade",id)); }
+  window.restoreTeslim=async function(id,data){ await setDoc(doc(db,"teslim",id),data); await deleteDoc(doc(db,"teslim_deleted",id)); }
+  window.restoreIade=async function(id,data){ await setDoc(doc(db,"iade",id),data); await deleteDoc(doc(db,"iade_deleted",id)); }
+
+  /* === Silinenleri Göster/Gizle === */
+  window.toggleDeleted=function(){ deletedMode=!deletedMode; loadTeslim(); loadIade(); }
+
+  /* === Excel Export === */
+  window.exportExcel=function(){
+    let wb=XLSX.utils.book_new();
+    let ws1=XLSX.utils.table_to_sheet(document.getElementById("teslimTable"));
+    let ws2=XLSX.utils.table_to_sheet(document.getElementById("iadeTable"));
+    XLSX.utils.book_append_sheet(wb,ws1,"Teslimatlar");
+    XLSX.utils.book_append_sheet(wb,ws2,"Iadeler");
+    XLSX.writeFile(wb,"arac_teslim_iade.xlsx");
   }
 
   /* === Düzenleme Modal İşlemleri === */

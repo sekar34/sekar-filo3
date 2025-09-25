@@ -357,8 +357,13 @@
     let totalPages=Math.ceil(filtered.length/teslimPerPage);
     let pagDiv=document.getElementById("teslimPagination");
     pagDiv.innerHTML=`Sayfa ${teslimPage}/${totalPages} `;
-    if(teslimPage>1) pagDiv.innerHTML+=`<button onclick="teslimPage--;renderTable()">◀</button>`;
-    if(teslimPage<totalPages) pagDiv.innerHTML+=`<button onclick="teslimPage++;renderTable()">▶</button>`;
+    if(teslimPage>1) pagDiv.innerHTML+=`<button onclick="changeTeslimPage(${teslimPage-1})">◀</button>`;
+    if(teslimPage<totalPages) pagDiv.innerHTML+=`<button onclick="changeTeslimPage(${teslimPage+1})">▶</button>`;
+  }
+
+  window.changeTeslimPage=function(p){
+    teslimPage=p;
+    renderTable();
   }
   /* === İade Tablosu === */
   function loadIade(){
@@ -407,8 +412,13 @@
     let totalPages=Math.ceil(filtered.length/iadePerPage);
     let pagDiv=document.getElementById("iadePagination");
     pagDiv.innerHTML=`Sayfa ${iadePage}/${totalPages} `;
-    if(iadePage>1) pagDiv.innerHTML+=`<button onclick="iadePage--;renderIadeTable()">◀</button>`;
-    if(iadePage<totalPages) pagDiv.innerHTML+=`<button onclick="iadePage++;renderIadeTable()">▶</button>`;
+    if(iadePage>1) pagDiv.innerHTML+=`<button onclick="changeIadePage(${iadePage-1})">◀</button>`;
+    if(iadePage<totalPages) pagDiv.innerHTML+=`<button onclick="changeIadePage(${iadePage+1})">▶</button>`;
+  }
+
+  window.changeIadePage=function(p){
+    iadePage=p;
+    renderIadeTable();
   }
 
   /* === Durum Güncelle === */

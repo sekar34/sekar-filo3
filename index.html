@@ -90,23 +90,26 @@
   <table id="teslimTable">
     <thead>
       <tr>
+        <th>#</th>
         <th>Tarih</th><th>Plaka</th><th>Model</th><th>Firma</th>
         <th>Kişi</th><th>İrtibat</th><th>Durum</th><th>Kullanıcı</th><th>İşlem</th>
       </tr>
       <tr class="filter-row">
-        <td><input onkeyup="applyFilters()" data-col="0"></td>
-        <td><input onkeyup="applyFilters()" data-col="1"></td>
-        <td><input onkeyup="applyFilters()" data-col="2"></td>
-        <td><input onkeyup="applyFilters()" data-col="3"></td>
-        <td><input onkeyup="applyFilters()" data-col="4"></td>
-        <td><input onkeyup="applyFilters()" data-col="5"></td>
-        <td><input onkeyup="applyFilters()" data-col="6"></td>
-        <td><input onkeyup="applyFilters()" data-col="7"></td>
+        <td></td>
+        <td><input onkeyup="renderTable()" data-col="1"></td>
+        <td><input onkeyup="renderTable()" data-col="2"></td>
+        <td><input onkeyup="renderTable()" data-col="3"></td>
+        <td><input onkeyup="renderTable()" data-col="4"></td>
+        <td><input onkeyup="renderTable()" data-col="5"></td>
+        <td><input onkeyup="renderTable()" data-col="6"></td>
+        <td><input onkeyup="renderTable()" data-col="7"></td>
+        <td><input onkeyup="renderTable()" data-col="8"></td>
         <td></td>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
+  <div id="teslimPagination"></div>
 </div>
 
 <!-- İadeler Bölümü -->
@@ -134,24 +137,27 @@
   <table id="iadeTable">
     <thead>
       <tr>
+        <th>#</th>
         <th>Tarih</th><th>Plaka</th><th>Model</th><th>Firma</th>
         <th>Kişi</th><th>İrtibat</th><th>KM</th><th>Durum</th><th>Kullanıcı</th><th>İşlem</th>
       </tr>
       <tr class="filter-row">
-        <td><input onkeyup="applyIadeFilters()" data-col="0"></td>
-        <td><input onkeyup="applyIadeFilters()" data-col="1"></td>
-        <td><input onkeyup="applyIadeFilters()" data-col="2"></td>
-        <td><input onkeyup="applyIadeFilters()" data-col="3"></td>
-        <td><input onkeyup="applyIadeFilters()" data-col="4"></td>
-        <td><input onkeyup="applyIadeFilters()" data-col="5"></td>
-        <td><input onkeyup="applyIadeFilters()" data-col="6"></td>
-        <td><input onkeyup="applyIadeFilters()" data-col="7"></td>
-        <td><input onkeyup="applyIadeFilters()" data-col="8"></td>
+        <td></td>
+        <td><input onkeyup="renderIadeTable()" data-col="1"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="2"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="3"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="4"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="5"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="6"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="7"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="8"></td>
+        <td><input onkeyup="renderIadeTable()" data-col="9"></td>
         <td></td>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
+  <div id="iadePagination"></div>
 </div>
 
 <!-- Rapor Bölümü -->
@@ -223,6 +229,10 @@
   let allIadeRecords=[];
   let deletedMode=false;
 
+  /* === Pagination === */
+  let teslimPage=1, teslimPerPage=25;
+  let iadePage=1, iadePerPage=25;
+
   /* === Login === */
   window.login = async function(){
     let email=document.getElementById("email").value.trim();
@@ -234,7 +244,7 @@
 
   /* === Auth Takibi === */
   onAuthStateChanged(auth, async user=>{
-    document.getElementById("loadingScreen").style.display="none"; // yükleme ekranını kapat
+    document.getElementById("loadingScreen").style.display="none";
     if(user){
       currentUserEmail=user.email;
       document.getElementById("authSection").style.display="none";
@@ -310,13 +320,24 @@
     let tb=document.querySelector("#teslimTable tbody"); tb.innerHTML="";
     let statusFilter=document.getElementById("statusFilter").value;
     let filters={}; document.querySelectorAll("#teslimTable .filter-row input").forEach(inp=>{ filters[inp.dataset.col]=inp.value.toLowerCase(); });
-    allRecords.forEach(r=>{
-      let formattedDate=r.tarih; if(r.tarih&&r.tarih.includes("-")){ let p=r.tarih.split("-"); formattedDate=`${p[2]}.${p[1]}.${p[0].slice(2)}`; }
+
+    let filtered=allRecords.filter(r=>{
+      let formattedDate=r.tarih;
+      if(r.tarih&&r.tarih.includes("-")){ let p=r.tarih.split("-"); formattedDate=`${p[2]}.${p[1]}.${p[0].slice(2)}`; }
       let durumDisplay=r.durum||"-";
-      if(statusFilter==="bekliyor"&&durumDisplay!=="Teslimat Bekliyor") return;
-      if(statusFilter==="edildi"&&durumDisplay!=="Teslim Edildi") return;
-      let values=[formattedDate,r.plaka,r.model,r.firma,r.kisi,r.irtibat,durumDisplay||"-",r.createdBy||"-"];
-      let visible=values.every((val,i)=>!filters[i]||val.toString().toLowerCase().includes(filters[i])); if(!visible) return;
+      if(statusFilter==="bekliyor"&&durumDisplay!=="Teslimat Bekliyor") return false;
+      if(statusFilter==="edildi"&&durumDisplay!=="Teslim Edildi") return false;
+      let values=[null,formattedDate,r.plaka,r.model,r.firma,r.kisi,r.irtibat,durumDisplay||"-",r.createdBy||"-"];
+      return values.every((val,i)=>!filters[i]||val.toString().toLowerCase().includes(filters[i]));
+    });
+
+    let start=(teslimPage-1)*teslimPerPage;
+    let pageRecords=filtered.slice(start,start+teslimPerPage);
+
+    pageRecords.forEach((r,idx)=>{
+      let formattedDate=r.tarih;
+      if(r.tarih&&r.tarih.includes("-")){ let p=r.tarih.split("-"); formattedDate=`${p[2]}.${p[1]}.${p[0].slice(2)}`; }
+      let durumDisplay=r.durum||"-";
       let tr=document.createElement("tr"); tr.className=(durumDisplay==="Teslim Edildi")?"passive":"";
       let actionBtns="";
       if(!deletedMode){
@@ -328,9 +349,16 @@
       } else {
         if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="restore-btn" onclick="restoreTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`; }
       }
-      tr.innerHTML=`<td>${formattedDate}</td><td>${r.plaka}</td><td>${r.model}</td><td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td><td>${durumDisplay}</td><td>${r.createdBy||"-"}</td><td>${actionBtns}</td>`;
+      let indexNo=start+idx+1;
+      tr.innerHTML=`<td>${indexNo}</td><td>${formattedDate}</td><td>${r.plaka}</td><td>${r.model}</td><td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td><td>${durumDisplay}</td><td>${r.createdBy||"-"}</td><td>${actionBtns}</td>`;
       tb.appendChild(tr);
     });
+
+    let totalPages=Math.ceil(filtered.length/teslimPerPage);
+    let pagDiv=document.getElementById("teslimPagination");
+    pagDiv.innerHTML=`Sayfa ${teslimPage}/${totalPages} `;
+    if(teslimPage>1) pagDiv.innerHTML+=`<button onclick="teslimPage--;renderTable()">◀</button>`;
+    if(teslimPage<totalPages) pagDiv.innerHTML+=`<button onclick="teslimPage++;renderTable()">▶</button>`;
   }
   /* === İade Tablosu === */
   function loadIade(){
@@ -342,13 +370,24 @@
     let tb=document.querySelector("#iadeTable tbody"); tb.innerHTML="";
     let statusFilter=document.getElementById("iadeStatusFilter").value;
     let filters={}; document.querySelectorAll("#iadeTable .filter-row input").forEach(inp=>{ filters[inp.dataset.col]=inp.value.toLowerCase(); });
-    allIadeRecords.forEach(r=>{
-      let formattedDate=r.tarih; if(r.tarih&&r.tarih.includes("-")){ let p=r.tarih.split("-"); formattedDate=`${p[2]}.${p[1]}.${p[0].slice(2)}`; }
+
+    let filtered=allIadeRecords.filter(r=>{
+      let formattedDate=r.tarih;
+      if(r.tarih&&r.tarih.includes("-")){ let p=r.tarih.split("-"); formattedDate=`${p[2]}.${p[1]}.${p[0].slice(2)}`; }
       let durumDisplay=r.durum||"-";
-      if(statusFilter==="bekliyor"&&durumDisplay!=="İade Bekleniyor") return;
-      if(statusFilter==="edildi"&&durumDisplay!=="İade Edildi") return;
-      let values=[formattedDate,r.plaka,r.model,r.firma,r.kisi,r.irtibat,r.km,durumDisplay||"-",r.createdBy||"-"];
-      let visible=values.every((val,i)=>!filters[i]||val.toString().toLowerCase().includes(filters[i])); if(!visible) return;
+      if(statusFilter==="bekliyor"&&durumDisplay!=="İade Bekleniyor") return false;
+      if(statusFilter==="edildi"&&durumDisplay!=="İade Edildi") return false;
+      let values=[null,formattedDate,r.plaka,r.model,r.firma,r.kisi,r.irtibat,r.km,durumDisplay||"-",r.createdBy||"-"];
+      return values.every((val,i)=>!filters[i]||val.toString().toLowerCase().includes(filters[i]));
+    });
+
+    let start=(iadePage-1)*iadePerPage;
+    let pageRecords=filtered.slice(start,start+iadePerPage);
+
+    pageRecords.forEach((r,idx)=>{
+      let formattedDate=r.tarih;
+      if(r.tarih&&r.tarih.includes("-")){ let p=r.tarih.split("-"); formattedDate=`${p[2]}.${p[1]}.${p[0].slice(2)}`; }
+      let durumDisplay=r.durum||"-";
       let tr=document.createElement("tr"); tr.className=(durumDisplay==="İade Edildi")?"passive":"";
       let actionBtns="";
       if(!deletedMode){
@@ -360,9 +399,16 @@
       } else {
         if(currentUserEmail==="admin@sekarfilo.com"){ actionBtns+=`<button class="restore-btn" onclick="restoreIade('${r.id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Geri Yükle</button>`; }
       }
-      tr.innerHTML=`<td>${formattedDate}</td><td>${r.plaka}</td><td>${r.model}</td><td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td><td>${r.km}</td><td>${durumDisplay}</td><td>${r.createdBy||"-"}</td><td>${actionBtns}</td>`;
+      let indexNo=start+idx+1;
+      tr.innerHTML=`<td>${indexNo}</td><td>${formattedDate}</td><td>${r.plaka}</td><td>${r.model}</td><td>${r.firma}</td><td>${r.kisi}</td><td>${r.irtibat}</td><td>${r.km}</td><td>${durumDisplay}</td><td>${r.createdBy||"-"}</td><td>${actionBtns}</td>`;
       tb.appendChild(tr);
     });
+
+    let totalPages=Math.ceil(filtered.length/iadePerPage);
+    let pagDiv=document.getElementById("iadePagination");
+    pagDiv.innerHTML=`Sayfa ${iadePage}/${totalPages} `;
+    if(iadePage>1) pagDiv.innerHTML+=`<button onclick="iadePage--;renderIadeTable()">◀</button>`;
+    if(iadePage<totalPages) pagDiv.innerHTML+=`<button onclick="iadePage++;renderIadeTable()">▶</button>`;
   }
 
   /* === Durum Güncelle === */

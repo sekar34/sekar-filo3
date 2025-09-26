@@ -98,7 +98,7 @@
         <td><input onkeyup="renderTable()" data-col="4"></td>
         <td><input onkeyup="renderTable()" data-col="5"></td>
         <td><input onkeyup="renderTable()" data-col="6"></td>
-        <td><input onkeyup="renderTable()" data-col="7"></td>
+        <!-- Kullanıcı için arama filtresi kaldırıldı -->
         <td></td>
       </tr>
     </thead>
@@ -309,6 +309,7 @@
       if (filter === "bekliyor" && r.durum !== "Teslimat Bekliyor") return false;
       if (filter === "edildi" && r.durum !== "Teslim Edildi") return false;
       let pass = true;
+      // Kullanıcı alanı aramadan çıkarıldı
       inputs.forEach(inp => {
         if (inp.value && !JSON.stringify(r).toUpperCase().includes(inp.value.toUpperCase())) pass = false;
       });
@@ -323,9 +324,10 @@
         ${isAdmin ? `<button class="delete-btn" onclick="deleteTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g, '&quot;')})">🗑 Sil</button>` : ""}
         ${deletedMode && isAdmin ? `<button class="restore-btn" onclick="restoreTeslim('${r.id}', ${JSON.stringify(r).replace(/"/g, '&quot;')})">♻️ Geri Yükle</button>` : ""}
       `;
+      let tarihFormat = r.tarih ? new Date(r.tarih).toLocaleDateString("tr-TR") : "";
       tr.innerHTML = `
         <td>${i + 1}</td>
-        <td>${r.tarih}</td>
+        <td>${tarihFormat}</td>
         <td>${r.plaka}</td>
         <td>${r.model}</td>
         <td>${r.firma}</td>
@@ -349,7 +351,6 @@
     if(type==="teslim"){ document.getElementById("kmLabel").style.display="none"; }
     else { document.getElementById("kmLabel").style.display="block"; }
 
-    // Firestore’dan kaydı çek
     const snap = await getDoc(doc(db, type, id));
     if (snap.exists()) {
       let data = snap.data();
@@ -362,7 +363,6 @@
       form.querySelector("[name='irtibat']").value = data.irtibat || "";
       if (type === "iade") form.querySelector("[name='km']").value = data.km || "";
     }
-
     modal.style.display = "flex";
   };
 
@@ -434,10 +434,11 @@
         ${isAdmin ? `<button class="delete-btn" onclick="deleteIade('${r.id}', ${JSON.stringify(r).replace(/"/g, '&quot;')})">🗑 Sil</button>` : ""}
         ${deletedMode && isAdmin ? `<button class="restore-btn" onclick="restoreIade('${r.id}', ${JSON.stringify(r).replace(/"/g, '&quot;')})">♻️ Geri Yükle</button>` : ""}
       `;
+      let tarihFormat = r.tarih ? new Date(r.tarih).toLocaleDateString("tr-TR") : "";
       let tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${i + 1}</td>
-        <td>${r.tarih}</td>
+        <td>${tarihFormat}</td>
         <td>${r.plaka}</td>
         <td>${r.model}</td>
         <td>${r.firma}</td>
@@ -457,13 +458,13 @@
 
   /* Silinenleri göster/gizle */
   window.toggleDeleted = () => { deletedMode = !deletedMode; loadTeslim(); loadIade(); };
+
   /* ==================== RAPORLAR ==================== */
   function renderReport() {
     let data = {};
     let tbody = document.querySelector("#reportTable tbody");
     tbody.innerHTML = "";
 
-    // 📋 Teslimatlar (sadece "Teslim Edildi")
     allRecords.forEach(r => {
       if (r.tarih && r.durum === "Teslim Edildi") {
         let y = r.tarih.split("-")[0];
@@ -473,7 +474,6 @@
       }
     });
 
-    // 📦 İadeler (sadece "İade Edildi")
     allIadeRecords.forEach(r => {
       if (r.tarih && r.durum === "İade Edildi") {
         let y = r.tarih.split("-")[0];
@@ -483,16 +483,13 @@
       }
     });
 
-    // 📊 Tabloya yazdır
     for (let y in data) {
-      // Teslimatlar satırı
       let rowT = `<tr><td>${y} Teslim</td>`;
       let sumT = 0;
       for (let i = 0; i < 12; i++) { rowT += `<td>${data[y].teslim[i]}</td>`; sumT += data[y].teslim[i]; }
       rowT += `<td>${sumT}</td></tr>`;
       tbody.innerHTML += rowT;
 
-      // İadeler satırı
       let rowI = `<tr><td>${y} İade</td>`;
       let sumI = 0;
       for (let i = 0; i < 12; i++) { rowI += `<td>${data[y].iade[i]}</td>`; sumI += data[y].iade[i]; }
@@ -548,7 +545,6 @@
   });
   document.getElementById("dropZone").addEventListener("click", () => vehicleFile.click());
 
-  // 🚘 Plaka yazıldığında model otomatik gelsin
   document.querySelector("#teslimForm input[name='plaka']").addEventListener("input", function () {
     let f = vehicleData.find(v => v.plaka === this.value.toUpperCase());
     if (f) teslimForm.querySelector("input[name='model']").value = f.model;
